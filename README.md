@@ -13,7 +13,9 @@ Execute the setup_deepracer.sh:
 
 Copy the deepracer_simulation files inside the ~/robot_ws/src/deepracer_simulation directory
 
-To run the simulator, use the following commands:
+## How to run
+
+Use the following commands:
 
     cd ~/robot_ws
     source ~/robot_ws/devel/setup.bash
