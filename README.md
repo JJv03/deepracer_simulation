@@ -6,7 +6,7 @@ An open source library based on Gazebo and Ros to simulate DeepRacer.
 
 ## How to install
 
-Execute the setup_deepracer.sh:
+Execute the setup_deepracer.sh (do not use sudo, some commands may fail):
 
     chmod +x setup_deepracer.sh
     ./setup_deepracer.sh
