@@ -22,3 +22,7 @@ Use the following commands:
     catkin_make
     cd src/deepracer_simulation/launch
     roslaunch deepracer_simulation racetrack_with_racecar.launch world_name:={easy_track | medium_track | hard_track}
+
+## Possible errors
+
+You may need to give execute rights to the file scripts/servo_commands.py
