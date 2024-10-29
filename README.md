@@ -31,24 +31,28 @@ You can select between these three worlds: {easy_track | medium_track | hard_tra
 
 Change speed:
 
-        rostopic pub /<car_name>/<car_part>_wheel_velocity_controller/command std_msgs/Float64 "data: <value>" -r 10
+    rostopic pub /<car_name>/<car_part>_wheel_velocity_controller/command std_msgs/Float64 "data: <value>" -r 10
 
 Example use:
 
-        rostopic pub /racecar/left_front_wheel_velocity_controller/command std_msgs/Float64 "data: 1.0" -r 10
+    rostopic pub /racecar/left_front_wheel_velocity_controller/command std_msgs/Float64 "data: 1.0" -r 10
 
 Change wheel angle:
 
-        rostopic pub /<car_name>/<car_side>_steering_hinge_position_controller/command std_msgs/Float64 "data: <value>" -r 10
+    rostopic pub /<car_name>/<car_side>_steering_hinge_position_controller/command std_msgs/Float64 "data: <value>" -r 10
 
 Example use:
 
-        rostopic pub /racecar/left_steering_hinge_position_controller/command std_msgs/Float64 "data: 0.0" -r 10
+    rostopic pub /racecar/left_steering_hinge_position_controller/command std_msgs/Float64 "data: 0.0" -r 10
 
 Use the camera:
 
-        rqt_image_view
+    rqt_image_view
 
 ## Possible errors
 
-You may need to give execute rights to the file scripts/servo_commands.py
+In case you have this error:
+
+    ERROR: cannot launch node of type [deepracer_simulation/servo_commands.py]: Cannot locate node of type [servo_commands.py] in package [deepracer_simulation]. Make sure file exists in package path and permission is set to executable (chmod +x)
+
+Try to give execute rights to the file scripts/servo_commands.py
