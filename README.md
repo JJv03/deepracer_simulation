@@ -24,6 +24,8 @@ Use the following commands:
     catkin_make
     cd src/deepracer_simulation/launch
     roslaunch deepracer_simulation racetrack_with_racecar.launch world_name:=hard_track
+
+[In case you have any errors](#possible-errors)
     
 You can select between these three worlds: {easy_track | medium_track | hard_track}
 
