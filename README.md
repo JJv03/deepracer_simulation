@@ -55,4 +55,6 @@ In case you have this error:
 
     ERROR: cannot launch node of type [deepracer_simulation/servo_commands.py]: Cannot locate node of type [servo_commands.py] in package [deepracer_simulation]. Make sure file exists in package path and permission is set to executable (chmod +x)
 
-Try to give execute rights to the file scripts/servo_commands.py
+Try to give execute rights to the file scripts/servo_commands.py (you can run this line from the launch directory to avoid changing directory, just for convenience):
+
+    chmod +x ../scripts/servo_commands.py
