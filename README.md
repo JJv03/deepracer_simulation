@@ -2,7 +2,7 @@
 
 ## About the project
 
-An open source library based on Gazebo and Ros to simulate DeepRacer.
+An open source library based on Gazebo and Ros to simulate DeepRacer. It has been developed on a Ubuntu 20.04 with Ros Noetic and Gazebo 11.11.0. 
 
 ## How to install
 
