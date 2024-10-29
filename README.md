@@ -23,7 +23,9 @@ Use the following commands:
     source ~/robot_ws/devel/setup.bash
     catkin_make
     cd src/deepracer_simulation/launch
-    roslaunch deepracer_simulation racetrack_with_racecar.launch world_name:={easy_track | medium_track | hard_track}
+    roslaunch deepracer_simulation racetrack_with_racecar.launch world_name:=hard_track
+    
+You can select between these three worlds: {easy_track | medium_track | hard_track}
 
 ## Useful commands:
 
