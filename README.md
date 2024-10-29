@@ -8,6 +8,7 @@ An open source library based on Gazebo and Ros to simulate DeepRacer.
 
 Execute the setup_deepracer.sh:
 
+    chmod +x setup_deepracer.sh
     ./setup_deepracer.sh
 
 Copy the deepracer_simulation files inside the ~/robot_ws/src/deepracer_simulation directory
