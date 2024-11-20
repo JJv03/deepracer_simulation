@@ -4,7 +4,7 @@
 
 An open source library based on Gazebo and Ros to simulate DeepRacer. It has been developed on a Ubuntu 20.04 with Ros Noetic and Gazebo 11.11.0. 
 
-## How to install:
+## How to install and launch:
 
     git clone https://github.com/JJv03/deepracer_simulation
     rosdep install --from-paths src --ignore-src -r -y
