@@ -1,4 +1,4 @@
-# deepRacer_simulator
+# deepracer_simulation
 
 ## About the project
 
