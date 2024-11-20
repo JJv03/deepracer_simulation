@@ -4,26 +4,13 @@
 
 An open source library based on Gazebo and Ros to simulate DeepRacer. It has been developed on a Ubuntu 20.04 with Ros Noetic and Gazebo 11.11.0. 
 
-## How to install
+## How to install:
 
-Clone the repository and execute the setup_deepracer.sh (do not use sudo, some commands may fail):
-
-    git clone https://github.com/JJv03/deepRacer_simulator
-    cd deepRacer_simulator
-    chmod +x setup_deepracer.sh
-    ./setup_deepracer.sh
-
-Copy the deepracer_simulation files inside the ~/robot_ws/src/deepracer_simulation directory
-
-## How to run
-
-Use the following commands:
-
-    cd ~/robot_ws
+    git clone https://github.com/JJv03/deepracer_simulation
+    rosdep install --from-paths src --ignore-src -r -y
+    catkin build
     source ~/robot_ws/devel/setup.bash
-    catkin_make
-    cd src/deepracer_simulation/launch
-    roslaunch deepracer_simulation racetrack_with_racecar.launch world_name:=hard_track
+    roslaunch deepracer_simulation racetrack_with_racecar.launch
 
 [In case you have any errors](#possible-errors)
     
