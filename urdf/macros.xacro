@@ -129,4 +129,34 @@
   </transmission>
 </xacro:macro>
 
+<xacro:macro name="top_cover_two_cameras_macro" params="parent_link">
+  <link name="top_cover_two_cameras_link">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <mass value="0.5" /> <!-- Ajusta la masa según corresponda -->
+      <inertia ixx="0.001" ixy="0" ixz="0" iyy="0.001" iyz="0" izz="0.001" />
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://deepracer_simulation/meshes/top_cover_two_cameras.STL" scale="1 1 1" />
+      </geometry>
+      <material name="blue" /> <!-- Usa un material existente -->
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://deepracer_simulation/meshes/top_cover_two_cameras.STL" scale="1 1 1" />
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="top_cover_two_cameras_joint" type="fixed">
+    <origin xyz="0.03 0 -0.01" rpy="-1.57 3.14 0" /> <!-- Ajusta posición relativa -->
+    <parent link="${parent_link}" />
+    <child link="top_cover_two_cameras_link" />
+  </joint>
+</xacro:macro>
+
+
 </robot>
