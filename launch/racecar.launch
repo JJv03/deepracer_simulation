@@ -12,7 +12,14 @@
   <param name="robot_description" command="$(find xacro)/xacro '$(find deepracer_simulation)/urdf/racecar.xacro'" />
 
   <!-- push robot_description to factory and spawn robot in gazebo -->
-  <node name="racecar_spawn" pkg="gazebo_ros" type="spawn_model" output="screen" args="-urdf -param robot_description -model racecar -x 1 -y 1 -z 0.1" />
+  <node name="racecar_spawn" pkg="gazebo_ros" type="spawn_model" output="screen" 
+      args="-urdf -param robot_description -model racecar 
+            -x -0.5520625887700714 
+            -y -3.0566349629442415 
+            -z 0 
+            -R 0 
+            -P 0 
+            -Y -0.5227038879975146" />
 
   <!-- ros_control racecar launch file -->
   <include file="$(find deepracer_simulation)/launch/racecar_control.launch" ns="/"/>
