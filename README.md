@@ -12,6 +12,10 @@ An open source library based on Gazebo and Ros to simulate DeepRacer. It has bee
     source ~/robot_ws/devel/setup.bash
     roslaunch deepracer_simulation racetrack_with_racecar.launch
 
+## How to train:
+
+    roslaunch deepracer_simulation train.launch
+
 [In case you have any errors](#possible-errors)
     
 You can select between these three worlds: {easy_track | medium_track | hard_track | 2022_april_open}
@@ -27,7 +31,9 @@ Use the camera:
 In case you have this error:
 
     ERROR: cannot launch node of type [deepracer_simulation/servo_commands.py]: Cannot locate node of type [servo_commands.py] in package [deepracer_simulation]. Make sure file exists in package path and permission is set to executable (chmod +x)
-
+    ERROR: cannot launch node of type [deepracer_simulation/train.py]: Cannot locate node of type [train.py] in package [deepracer_simulation]. Make sure file exists in package path and permission is set to executable (chmod +x)
+    
 Try to give execute rights to the file scripts/servo_commands.py (you can run this line from the launch directory to avoid changing directory, just for convenience):
 
     chmod +x ../scripts/servo_commands.py
+    chmod +x ../train/train.py
