@@ -115,7 +115,6 @@ class DeepRacerEnv(gym.Env):
         """Devuelve el estado del modelo cuando se le pida"""
         return self.model_position, self.model_orientation
 
-
     def callback_image(self, data):
         bridge = CvBridge()
         self.image = cv2.resize(bridge.imgmsg_to_cv2(data, desired_encoding='bgr8'), (160, 120))
