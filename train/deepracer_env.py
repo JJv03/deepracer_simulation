@@ -124,7 +124,7 @@ class DeepRacerEnv(gym.Env):
     def reward_func(self):
         """
         Calcula la recompensa basada en:
-        1. La proximidad al waypoint más cercano.
+        1. La proximidad al centro de la pista según el grosor permitido.
         """
         if len(self.waypoints) == 0:
             return 0.0
@@ -132,16 +132,24 @@ class DeepRacerEnv(gym.Env):
         # Obtener la posición actual del robot
         robot_pos = self.model_position[:2]  # Solo usar las coordenadas x, y
 
-        # Calcular la distancia a todos los waypoints
-        distances = [np.linalg.norm(robot_pos - np.array(waypoint[:2])) for waypoint in self.waypoints]
+        # Encontrar el waypoint más cercano al robot
+        distances_to_waypoints = [np.linalg.norm(robot_pos - np.array(waypoint[:2])) for waypoint in self.waypoints]
+        nearest_index = np.argmin(distances_to_waypoints)
+        nearest_waypoint = self.waypoints[nearest_index]
 
-        # Encontrar el waypoint más cercano
-        min_distance = min(distances)
+        # Calcular la distancia al centro de la pista
+        track_center = np.array(nearest_waypoint[:2])  # Centro de la pista en el waypoint más cercano
+        distance_to_center = np.linalg.norm(robot_pos - track_center)
 
-        # Recompensa: cuanto más cerca esté el robot del waypoint, mejor
-        reward = max(1 - min_distance, 0)  # Recompensa positiva basada en la proximidad
+        # Calcular la recompensa en base al grosor
+        max_distance = self.thickness / 2  # Distancia máxima permitida desde el centro
+        if distance_to_center > max_distance:
+            return 0.0  # Fuera de la pista
 
+        # Recompensa proporcional: 1 en el centro, 0 en el borde
+        reward = 1 - (distance_to_center / max_distance)
         return reward
+
 
     def close(self):
         rospy.signal_shutdown("Cierre del entorno DeepRacer.")
