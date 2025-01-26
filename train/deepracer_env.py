@@ -12,7 +12,7 @@ from cv_bridge import CvBridge
 from gazebo_msgs.msg import ModelStates
 
 class DeepRacerEnv(gym.Env):
-    def __init__(self):
+    def __init__(self, waypoints, thickness):
         super(DeepRacerEnv, self).__init__()
         self.steps = 0
         self.max_steps = 100
@@ -28,6 +28,8 @@ class DeepRacerEnv(gym.Env):
         self.model_orientation = np.zeros(4)
         self.action_space = spaces.Box(low=np.array([-1.0, 0.0]), high=np.array([1.0, 3.0]), dtype=np.float32)
         self.observation_space = spaces.Box(low=0, high=255, shape=(120, 160, 3), dtype=np.uint8)
+        self.waypoints = waypoints
+        self.thickness = thickness
 
     def reset(self, seed=None):
         super().reset(seed=seed)
@@ -122,69 +124,24 @@ class DeepRacerEnv(gym.Env):
     def reward_func(self):
         """
         Calcula la recompensa basada en:
-        1. La proximidad de la línea naranja al centro.
-        2. Verifica si la línea naranja está entre dos bordes blancos.
-        3. Penaliza si está en zonas verdes.
+        1. La proximidad al waypoint más cercano.
         """
-        if self.image is None:
+        if len(self.waypoints) == 0:
             return 0.0
 
-        # Convertir la imagen a HSV para detectar colores
-        hsv_image = cv2.cvtColor(self.image, cv2.COLOR_BGR2HSV)
+        # Obtener la posición actual del robot
+        robot_pos = self.model_position[:2]  # Solo usar las coordenadas x, y
 
-        # Definir rangos de colores para el naranja (línea central), el verde (zonas a evitar) y blanco (bordes de la pista)
-        orange_lower = np.array([0, 50, 50])     # Rango más amplio para el naranja
-        orange_upper = np.array([25, 255, 255])
-        green_lower = np.array([30, 50, 50])  # Rango verde ajustado para la pista
-        green_upper = np.array([100, 255, 255])
-        white_lower = np.array([0, 0, 200])  # Definimos un rango de color blanco
-        white_upper = np.array([255, 40, 255])
+        # Calcular la distancia a todos los waypoints
+        distances = [np.linalg.norm(robot_pos - np.array(waypoint[:2])) for waypoint in self.waypoints]
 
-        # Crear máscaras para los colores
-        orange_mask = cv2.inRange(hsv_image, orange_lower, orange_upper)
-        green_mask = cv2.inRange(hsv_image, green_lower, green_upper)
-        white_mask = cv2.inRange(hsv_image, white_lower, white_upper)
+        # Encontrar el waypoint más cercano
+        min_distance = min(distances)
 
-        # Mostrar las máscaras para depuración
-        cv2.imshow("Máscara Naranja", orange_mask)  # Muestra la máscara para el color naranja
-        cv2.imshow("Máscara Verde", green_mask)     # Muestra la máscara para el color verde
-        cv2.imshow("Máscara Blanca", white_mask)    # Muestra la máscara para el color blanco
-        cv2.waitKey(1)  # Espera una tecla para continuar (necesario para la actualización continua)
+        # Recompensa: cuanto más cerca esté el robot del waypoint, mejor
+        reward = max(1 - min_distance, 0)  # Recompensa positiva basada en la proximidad
 
-        # Calcular el centro de la línea naranja
-        orange_moments = cv2.moments(orange_mask)
-        if orange_moments['m00'] > 0:
-            cx_orange = int(orange_moments['m10'] / orange_moments['m00'])
-        else:
-            return -1.0  # Penalizar si no se detecta la línea naranja
-
-        print("valor cx_orange: ", cx_orange)
-
-        # Calcular la desviación desde el centro de la imagen (0 es el centro)
-        center_offset = abs(cx_orange - (self.image.shape[1] // 2))
-        center_reward = 1 - (center_offset / (self.image.shape[1] // 2))  # Normalizado a un rango de 0 a 1
-
-        # Verificar si la línea naranja está dentro de los bordes blancos
-        # Supongamos que los bordes blancos están cerca de los lados izquierdo y derecho de la imagen
-        white_area_left = np.sum(white_mask[:, :self.image.shape[1] // 3])  # Zona izquierda de los bordes blancos
-        white_area_right = np.sum(white_mask[:, 2 * self.image.shape[1] // 3:])  # Zona derecha de los bordes blancos
-
-        if white_area_left == 0 or white_area_right == 0:
-            print("Salto por blanco")
-            return -1.0  # Penaliza si no está entre los bordes blancos
-
-        # Penalización por estar en áreas verdes
-        green_area = np.sum(green_mask) / (self.image.shape[0] * self.image.shape[1] * 255)
-        print("valor green_area: ", green_area)
-        if green_area > 0.2:  # Si más del 20% de la imagen es verde, penalizamos
-            print("Salto por verde")
-            return -1.0  # Penalización máxima por estar en la zona verde
-
-        # La recompensa final será la recompensa por centrarse sobre la línea naranja
-        reward = center_reward  # 1.0 cuando está centrado, menos cuando está descentrado
-
-        return max(reward, -1.0)  # Asegurar que la recompensa no sea menor que -1.0
-
+        return reward
 
     def close(self):
         rospy.signal_shutdown("Cierre del entorno DeepRacer.")
