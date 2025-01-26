@@ -71,8 +71,8 @@ def extract_waypoints_to_csv(dae_file, output_csv, array_id='road-verts-array', 
 
 def main():
     # Configuración de los waypoints
-    dae_file = "../meshes/2022_april_open/2022_april_open.dae"  # Archivo proporcionado
-    output_csv = "waypoints.csv"  # Archivo de salida
+    dae_file = "/home/arob/robot_ws/src/deepracer_simulation/meshes/2022_april_open/2022_april_open.dae"  # Archivo proporcionado
+    output_csv = "/home/arob/robot_ws/src/deepracer_simulation/train/waypoints.csv"  # Archivo de salida
     array_id = "cl-verts-array"  # "cl-verts-array" (linea central) - "road-verts-array" (Carretera) - "ol-verts-array" (Linea exterior)
     step = 1  # Intervalo para seleccionar waypoints
 
