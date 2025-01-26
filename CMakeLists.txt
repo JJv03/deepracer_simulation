@@ -20,6 +20,7 @@ include_directories(
 #############
 
 install(PROGRAMS
+    train/train.py
     scripts/servo_commands.py
     DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
