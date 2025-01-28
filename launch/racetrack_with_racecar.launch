@@ -1,8 +1,10 @@
 <?xml version="1.0"?>
 <launch>
   <arg name="world_name" default="2022_april_open"/>
+  <arg name="gui" default="true"/> <!-- Flag para interfaz gráfica -->
 
   <include file="$(find deepracer_simulation)/launch/racecar.launch">
     <arg name="world_name" value="$(arg world_name)"/>
+    <arg name="gui" value="$(arg gui)"/> <!-- Pasar el flag gui -->
   </include>
 </launch>
