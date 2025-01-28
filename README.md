@@ -12,9 +12,9 @@ An open source library based on Gazebo and Ros to simulate DeepRacer. It has bee
     source ~/robot_ws/devel/setup.bash
     roslaunch deepracer_simulation racetrack_with_racecar.launch
 
-## How to train:
+## How to train (by default gui:=true):
 
-    roslaunch deepracer_simulation train.launch
+    roslaunch deepracer_simulation train.launch (gui:=false)?
 
 [In case you have any errors](#possible-errors)
     
