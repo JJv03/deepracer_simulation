@@ -10,12 +10,14 @@ from sensor_msgs.msg import Image as sensor_image
 import cv2
 from cv_bridge import CvBridge
 from gazebo_msgs.msg import ModelStates
+from gazebo_msgs.srv import SetModelState
+from gazebo_msgs.msg import ModelState
 
 class DeepRacerEnv(gym.Env):
     def __init__(self, waypoints, thickness):
         super(DeepRacerEnv, self).__init__()
         self.steps = 0
-        self.max_steps = 100
+        self.max_steps = 10000
         self.ack_publisher = rospy.Publisher('/vesc/low_level/ackermann_cmd_mux/output', AckermannDriveStamped, queue_size=100)
         rospy.Subscriber('/camera/zed/rgb/image_rect_color', sensor_image, self.callback_image)
         rospy.Subscriber('/gazebo/model_states', ModelStates, self.callback_model_states)
@@ -31,6 +33,11 @@ class DeepRacerEnv(gym.Env):
         self.waypoints = waypoints
         self.thickness = thickness
 
+        # Inicializar la posición inicial del robot
+        self.initial_position = np.array([-0.5456519086166459, -3.060323716659117, -5.581931699989023e-06])  # x, y, z
+        self.initial_orientation = np.array([6.1710519125244906e-06, 2.4181460708256078e-05, -0.2583623974492632, 0.9660480686598593])  # x, y, z, w (cuaternión)
+
+
     def reset(self, seed=None):
         super().reset(seed=seed)
         """
@@ -38,26 +45,52 @@ class DeepRacerEnv(gym.Env):
         """
         rospy.wait_for_service('/gazebo/pause_physics')
         try:
-            #resp_pause = pause.call()
             self.pause()
         except (rospy.ServiceException) as e:
-            print ("/gazebo/unpause_physics service call failed")
+            print("/gazebo/unpause_physics service call failed")
 
         rospy.wait_for_service('/gazebo/unpause_physics')
         try:
-            #resp_pause = pause.call()
             self.unpause()
         except (rospy.ServiceException) as e:
-            print ("/gazebo/pause_physics service call failed")
+            print("/gazebo/pause_physics service call failed")
         
         self.reward = None
         self.done = False
         self.state = None
         self.image = np.zeros((120, 160, 3), dtype=np.uint8)
         self.steps = 0
+
+        # Reiniciar posición en Gazebo
+        self.reset_model_state()
+
         # Inicializa el estado con valores aleatorios en los rangos definidos
-        self.send_action(0, 0)  # set the throttle to 0
+        self.send_action(0, 0)  # Establece el acelerador a 0
+        print("RESET!")
         return self.image, {}  # Devuelve el estado inicial y un diccionario vacío
+
+    def reset_model_state(self):
+        """
+        Reinicia la posición y orientación del robot en Gazebo utilizando el servicio /gazebo/set_model_state.
+        """
+        try:
+            rospy.wait_for_service('/gazebo/set_model_state')
+            set_model_state = rospy.ServiceProxy('/gazebo/set_model_state', SetModelState)
+            
+            model_state = ModelState()
+            model_state.model_name = "racecar"  # El nombre del modelo en Gazebo
+            model_state.pose.position.x = self.initial_position[0]
+            model_state.pose.position.y = self.initial_position[1]
+            model_state.pose.position.z = self.initial_position[2]
+            model_state.pose.orientation.x = self.initial_orientation[0]
+            model_state.pose.orientation.y = self.initial_orientation[1]
+            model_state.pose.orientation.z = self.initial_orientation[2]
+            model_state.pose.orientation.w = self.initial_orientation[3]
+            
+            # Establecer la nueva posición en Gazebo
+            set_model_state(model_state)
+        except rospy.ServiceException as e:
+            rospy.logerr("Failed to set model state: %s", e)
 
     def step(self, action):
         """
@@ -66,31 +99,35 @@ class DeepRacerEnv(gym.Env):
 
         rospy.wait_for_service('/gazebo/unpause_physics')
         try:
-            #resp_pause = pause.call()
             self.unpause()
         except (rospy.ServiceException) as e:
-            print ("/gazebo/pause_physics service call failed")
+            print("/gazebo/pause_physics service call failed")
 
         self.steps += 1
         done = self.steps >= self.max_steps  # Termina el episodio después de max_steps
-        
+
         self.send_action(action[0], action[1])
         time.sleep(0.1)
 
-        # Calcular la recompensa
+        # Calculamos la recompensa
         reward = self.reward_func()
-        
+        print(reward)
+
+        # Si el robot se sale del recorrido, reiniciamos
+        if reward == 0.0:  # Fuera del recorrido
+            self.reset()  # Reiniciar la posición
+            truncated = True  # El episodio se truncó porque el robot se salió de la pista
+        else:
+            truncated = False  # El episodio continúa normalmente
+
         rospy.wait_for_service('/gazebo/pause_physics')
         try:
-            #resp_pause = pause.call()
             self.pause()
         except (rospy.ServiceException) as e:
-            print ("/gazebo/unpause_physics service call failed")
+            print("/gazebo/unpause_physics service call failed")
 
-        truncated = False
-
-        # Devuelve el nuevo estado, la recompensa, si terminó, y un diccionario vacío
         return self.image, reward, done, truncated, {}
+
 
     def send_action(self, steering_angle, throttle):
         ack_msg = AckermannDriveStamped()
@@ -125,6 +162,7 @@ class DeepRacerEnv(gym.Env):
         """
         Calcula la recompensa basada en:
         1. La proximidad al centro de la pista según el grosor permitido.
+        2. Si el robot se sale del recorrido, retorna 0.
         """
         if len(self.waypoints) == 0:
             return 0.0
@@ -149,7 +187,6 @@ class DeepRacerEnv(gym.Env):
         # Recompensa proporcional: 1 en el centro, 0 en el borde
         reward = 1 - (distance_to_center / max_distance)
         return reward
-
 
     def close(self):
         rospy.signal_shutdown("Cierre del entorno DeepRacer.")
