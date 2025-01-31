@@ -32,6 +32,8 @@ class DeepRacerEnv(gym.Env):
         self.observation_space = spaces.Box(low=0, high=255, shape=(120, 160, 3), dtype=np.uint8)
         self.waypoints = waypoints
         self.thickness = thickness
+        
+        self.times = 0.0
 
         # Inicializar la posición inicial del robot
         self.initial_position = np.array([-0.5456519086166459, -3.060323716659117, -5.581931699989023e-06])  # x, y, z
@@ -63,6 +65,8 @@ class DeepRacerEnv(gym.Env):
 
         # Reiniciar posición en Gazebo
         self.reset_model_state()
+        
+        self.times = 0.0
 
         # Inicializa el estado con valores aleatorios en los rangos definidos
         self.send_action(0, 0)  # Establece el acelerador a 0
@@ -110,8 +114,11 @@ class DeepRacerEnv(gym.Env):
         time.sleep(0.1)
 
         # Calculamos la recompensa
+        s_time = time.time()
         reward = self.reward_func()
-        print(reward)
+        f_time = time.time()
+        dif = f_time-s_time
+        self.times += dif
 
         # Si el robot se sale del recorrido, reiniciamos
         if reward == 0.0:  # Fuera del recorrido
@@ -126,6 +133,11 @@ class DeepRacerEnv(gym.Env):
         except (rospy.ServiceException) as e:
             print("/gazebo/unpause_physics service call failed")
 
+        print("Tiempo actual:", dif)
+        
+        if (done or truncated):
+            print("Tiempo medio", self.times/self.steps)
+        
         return self.image, reward, done, truncated, {}
 
 
