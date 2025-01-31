@@ -12,6 +12,7 @@ from cv_bridge import CvBridge
 from gazebo_msgs.msg import ModelStates
 from gazebo_msgs.srv import SetModelState
 from gazebo_msgs.msg import ModelState
+from scipy.spatial import KDTree
 
 class DeepRacerEnv(gym.Env):
     def __init__(self, waypoints, thickness):
@@ -30,8 +31,10 @@ class DeepRacerEnv(gym.Env):
         self.model_orientation = np.zeros(4)
         self.action_space = spaces.Box(low=np.array([-1.0, 0.0]), high=np.array([1.0, 3.0]), dtype=np.float32)
         self.observation_space = spaces.Box(low=0, high=255, shape=(120, 160, 3), dtype=np.uint8)
-        self.waypoints = waypoints
+        
+        self.waypoints = np.array(waypoints)[:, :2]  # Solo tomar x, y
         self.thickness = thickness
+        self.kd_tree = KDTree(self.waypoints)  # Construcción del KD-Tree
         
         self.times = 0.0
 
@@ -114,11 +117,11 @@ class DeepRacerEnv(gym.Env):
         time.sleep(0.1)
 
         # Calculamos la recompensa
-        s_time = time.time()
+        # s_time = time.time()
         reward = self.reward_func()
-        f_time = time.time()
-        dif = f_time-s_time
-        self.times += dif
+        # f_time = time.time()
+        # dif = f_time-s_time
+        # self.times += dif
 
         # Si el robot se sale del recorrido, reiniciamos
         if reward == 0.0:  # Fuera del recorrido
@@ -133,10 +136,10 @@ class DeepRacerEnv(gym.Env):
         except (rospy.ServiceException) as e:
             print("/gazebo/unpause_physics service call failed")
 
-        print("Tiempo actual:", dif)
+        # print("Tiempo actual:", dif)
         
-        if (done or truncated):
-            print("Tiempo medio", self.times/self.steps)
+        # if (done or truncated):
+        #     print("Tiempo medio", self.times/self.steps)
         
         return self.image, reward, done, truncated, {}
 
@@ -182,14 +185,12 @@ class DeepRacerEnv(gym.Env):
         # Obtener la posición actual del robot
         robot_pos = self.model_position[:2]  # Solo usar las coordenadas x, y
 
-        # Encontrar el waypoint más cercano al robot
-        distances_to_waypoints = [np.linalg.norm(robot_pos - np.array(waypoint[:2])) for waypoint in self.waypoints]
-        nearest_index = np.argmin(distances_to_waypoints)
+        # Encontrar el waypoint más cercano usando KD-Tree
+        _, nearest_index = self.kd_tree.query(robot_pos)
         nearest_waypoint = self.waypoints[nearest_index]
 
         # Calcular la distancia al centro de la pista
-        track_center = np.array(nearest_waypoint[:2])  # Centro de la pista en el waypoint más cercano
-        distance_to_center = np.linalg.norm(robot_pos - track_center)
+        distance_to_center = np.linalg.norm(robot_pos - nearest_waypoint)
 
         # Calcular la recompensa en base al grosor
         max_distance = self.thickness / 2  # Distancia máxima permitida desde el centro
@@ -197,8 +198,7 @@ class DeepRacerEnv(gym.Env):
             return 0.0  # Fuera de la pista
 
         # Recompensa proporcional: 1 en el centro, 0 en el borde
-        reward = 1 - (distance_to_center / max_distance)
-        return reward
+        return 1 - (distance_to_center / max_distance)
 
     def close(self):
         rospy.signal_shutdown("Cierre del entorno DeepRacer.")
