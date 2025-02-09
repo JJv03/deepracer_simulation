@@ -37,6 +37,8 @@ class DeepRacerEnv(gym.Env):
         self.kd_tree = KDTree(self.waypoints)  # Construcción del KD-Tree
         
         self.times = 0.0
+        
+        self.speed = 0
 
         # Inicializar la posición inicial del robot
         self.initial_position = np.array([-0.5456519086166459, -3.060323716659117, -5.581931699989023e-06])  # x, y, z
@@ -73,6 +75,7 @@ class DeepRacerEnv(gym.Env):
 
         # Inicializa el estado con valores aleatorios en los rangos definidos
         self.send_action(0, 0)  # Establece el acelerador a 0
+        self.speed = 0
         print("RESET!")
         return self.image, {}  # Devuelve el estado inicial y un diccionario vacío
 
@@ -145,6 +148,7 @@ class DeepRacerEnv(gym.Env):
 
 
     def send_action(self, steering_angle, throttle):
+        self.speed = throttle
         ack_msg = AckermannDriveStamped()
         ack_msg.header.stamp = rospy.Time.now()
         ack_msg.drive.steering_angle = steering_angle
@@ -178,9 +182,10 @@ class DeepRacerEnv(gym.Env):
         Calcula la recompensa basada en:
         1. La proximidad al centro de la pista según el grosor permitido.
         2. Si el robot se sale del recorrido, retorna 0.
+        3. La dirección que el robot debe seguir calculada en base a los dos waypoints más cercanos.
         """
-        if len(self.waypoints) == 0:
-            return 0.0
+        if len(self.waypoints) < 2:
+            return 0.0  # No hay suficientes waypoints para calcular la dirección
 
         # Obtener la posición actual del robot
         robot_pos = self.model_position[:2]  # Solo usar las coordenadas x, y
@@ -191,14 +196,41 @@ class DeepRacerEnv(gym.Env):
 
         # Calcular la distancia al centro de la pista
         distance_to_center = np.linalg.norm(robot_pos - nearest_waypoint)
-
+        
         # Calcular la recompensa en base al grosor
         max_distance = self.thickness / 2  # Distancia máxima permitida desde el centro
         if distance_to_center > max_distance:
             return 0.0  # Fuera de la pista
 
-        # Recompensa proporcional: 1 en el centro, 0 en el borde
-        return 1 - (distance_to_center / max_distance)
+        # Calcular la recompensa de proximidad: 1 en el centro, 0 en el borde
+        proximity_reward = 1 - (distance_to_center / max_distance)
+        print("Reward centro:", proximity_reward)
+
+        # Encontrar el siguiente waypoint más cercano en la secuencia del recorrido
+        next_index = (nearest_index + 1) % len(self.waypoints)  # Siguiente waypoint en el recorrido
+        next_waypoint = self.waypoints[next_index]
+
+        # Calcular el vector de dirección (normalizado)
+        direction_vector = np.array(next_waypoint) - np.array(nearest_waypoint)
+        direction_vector_normalized = direction_vector / np.linalg.norm(direction_vector)
+        print("Direccion way:", direction_vector_normalized)
+
+        # Dirección actual del robot???
+        print("Direccion robot:", robot_to_next_waypoint_vector)
+        
+        # Calcular el ángulo entre el vector de dirección y el vector de movimiento del robot
+        cos_angle = np.dot(direction_vector_normalized, robot_to_next_waypoint_vector)
+        print("Coseno:", cos_angle)
+        
+        # Penalización si el robot no está alineado en la dirección correcta
+        direction_reward = max(0, cos_angle)  # El coseno del ángulo estará en el rango [-1, 1]
+        print("Reward coseno:", direction_reward)
+
+        # La recompensa final es una combinación de la proximidad al centro y la alineación con la dirección
+        total_reward = (proximity_reward * direction_reward) # Reducir reward por velocidad baja (decidir qué es baja)
+        print("Reward:", total_reward)
+        
+        return total_reward
 
     def close(self):
         rospy.signal_shutdown("Cierre del entorno DeepRacer.")
