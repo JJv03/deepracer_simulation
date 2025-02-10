@@ -39,11 +39,11 @@ class DeepRacerEnv(gym.Env):
         self.times = 0.0
         
         self.speed = 0
+        self.optSpeed = 5
 
         # Inicializar la posición inicial del robot
         self.initial_position = np.array([-0.5456519086166459, -3.060323716659117, -5.581931699989023e-06])  # x, y, z
         self.initial_orientation = np.array([6.1710519125244906e-06, 2.4181460708256078e-05, -0.2583623974492632, 0.9660480686598593])  # x, y, z, w (cuaternión)
-
 
     def reset(self, seed=None):
         super().reset(seed=seed)
@@ -127,7 +127,7 @@ class DeepRacerEnv(gym.Env):
         # self.times += dif
 
         # Si el robot se sale del recorrido, reiniciamos
-        if reward == 0.0:  # Fuera del recorrido
+        if reward <= 0.0:  # Fuera del recorrido
             self.reset()  # Reiniciar la posición
             truncated = True  # El episodio se truncó porque el robot se salió de la pista
         else:
@@ -145,7 +145,6 @@ class DeepRacerEnv(gym.Env):
         #     print("Tiempo medio", self.times/self.steps)
         
         return self.image, reward, done, truncated, {}
-
 
     def send_action(self, steering_angle, throttle):
         self.speed = throttle
@@ -186,6 +185,10 @@ class DeepRacerEnv(gym.Env):
         """
         if len(self.waypoints) < 2:
             return 0.0  # No hay suficientes waypoints para calcular la dirección
+        
+        speed = self.speed
+        if speed < 0:
+            return 0.0  # Velocidad negativa (marcha atrás) es un comportamiento incorrecto
 
         # Obtener la posición actual del robot
         robot_pos = self.model_position[:2]  # Solo usar las coordenadas x, y
@@ -215,19 +218,32 @@ class DeepRacerEnv(gym.Env):
         direction_vector_normalized = direction_vector / np.linalg.norm(direction_vector)
         print("Direccion way:", direction_vector_normalized)
 
-        # Dirección actual del robot???
-        print("Direccion robot:", robot_to_next_waypoint_vector)
+        x, y, z, w = self.model_orientation
+        # Calcular el ángulo de giro (Yaw) en el plano XY
+        theta = np.arctan2(2 * (w * z + x * y), 1 - 2 * (x**2 + z**2))
         
-        # Calcular el ángulo entre el vector de dirección y el vector de movimiento del robot
-        cos_angle = np.dot(direction_vector_normalized, robot_to_next_waypoint_vector)
-        print("Coseno:", cos_angle)
+        # Vector dirección en 2D
+        car_vector = np.array([np.cos(theta), np.sin(theta)])
+        
+        print("Direccion robot:", car_vector)
+        
+        # Calcular el coseno del ángulo entre el vector de dirección y el vector de orientación del robot
+        cos_angle = np.dot(direction_vector_normalized, car_vector)
+        cos = np.degrees(np.arccos(cos_angle))
+        print("Coseno:", cos)
+        print("Coseno res:", cos_angle)
         
         # Penalización si el robot no está alineado en la dirección correcta
         direction_reward = max(0, cos_angle)  # El coseno del ángulo estará en el rango [-1, 1]
         print("Reward coseno:", direction_reward)
 
+        # Penalización por desviación de la velocidad óptima
+        vel_penalty = abs(speed - self.optSpeed) / self.optSpeed
+        print("Vel:", speed)
+        print("Penalización vel:", vel_penalty)
+        
         # La recompensa final es una combinación de la proximidad al centro y la alineación con la dirección
-        total_reward = (proximity_reward * direction_reward) # Reducir reward por velocidad baja (decidir qué es baja)
+        total_reward = (proximity_reward * direction_reward) - vel_penalty*0.75 # * o -, multiplicadores de peso a alguna cosa?
         print("Reward:", total_reward)
         
         return total_reward
