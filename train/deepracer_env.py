@@ -182,6 +182,7 @@ class DeepRacerEnv(gym.Env):
         1. La proximidad al centro de la pista según el grosor permitido.
         2. Si el robot se sale del recorrido, retorna 0.
         3. La dirección que el robot debe seguir calculada en base a los dos waypoints más cercanos.
+        4. Reducir la reward en base a la velocidad
         """
         if len(self.waypoints) < 2:
             return 0.0  # No hay suficientes waypoints para calcular la dirección
