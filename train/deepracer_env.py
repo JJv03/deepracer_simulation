@@ -237,14 +237,9 @@ class DeepRacerEnv(gym.Env):
         # Penalización si el robot no está alineado en la dirección correcta
         direction_reward = max(0, cos_angle)  # El coseno del ángulo estará en el rango [-1, 1]
         print("Reward coseno:", direction_reward)
-
-        # Penalización por desviación de la velocidad óptima
-        vel_penalty = abs(speed - self.optSpeed) / self.optSpeed
-        print("Vel:", speed)
-        print("Penalización vel:", vel_penalty)
         
         # La recompensa final es una combinación de la proximidad al centro y la alineación con la dirección
-        total_reward = (proximity_reward * direction_reward) - vel_penalty*0.75 # * o -, multiplicadores de peso a alguna cosa?
+        total_reward = (proximity_reward * direction_reward) # * o -, multiplicadores de peso a alguna cosa?
         print("Reward:", total_reward)
         
         return total_reward

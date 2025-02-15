@@ -6,6 +6,7 @@ import cv2
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import EvalCallback, CheckpointCallback
 from stable_baselines3.common.monitor import Monitor
+from stable_baselines3.common.vec_env import DummyVecEnv, VecTransposeImage
 from deepracer_env import DeepRacerEnv
 import xml.etree.ElementTree as ET
 
@@ -67,8 +68,10 @@ def main():
     waypoints, thickness = extract_waypoints(dae_file, step)
 
     # Crear el entorno y monitor
-    env = DeepRacerEnv(waypoints, thickness)
-    env = Monitor(env)
+    env = DeepRacerEnv(waypoints, thickness)    # Crea el entorno de simulación DeepRacer
+    env = DummyVecEnv([lambda: Monitor(env)])   # Envuelve el entorno en Monitor y lo vectoriza
+    env = VecTransposeImage(env)                # Ajusta el formato de imágenes para redes neuronales convolucionales
+
 
     # Configurar rutas
     base_path = os.path.expanduser('~/models')
