@@ -15,10 +15,10 @@ from gazebo_msgs.msg import ModelState
 from scipy.spatial import KDTree
 
 class DeepRacerEnv(gym.Env):
-    def __init__(self, waypoints, thickness):
+    def __init__(self, waypoints, thickness, long):
         super(DeepRacerEnv, self).__init__()
         self.steps = 0
-        self.max_steps = 10000
+        self.max_steps = 100
         self.ack_publisher = rospy.Publisher('/vesc/low_level/ackermann_cmd_mux/output', AckermannDriveStamped, queue_size=100)
         rospy.Subscriber('/camera/zed/rgb/image_rect_color', sensor_image, self.callback_image)
         rospy.Subscriber('/gazebo/model_states', ModelStates, self.callback_model_states)
@@ -34,12 +34,12 @@ class DeepRacerEnv(gym.Env):
         
         self.waypoints = np.array(waypoints)[:, :2]  # Solo tomar x, y
         self.thickness = thickness
+        self.long = long
         self.kd_tree = KDTree(self.waypoints)  # Construcción del KD-Tree
         
         self.times = 0.0
         
         self.speed = 0
-        self.optSpeed = 5
 
         # Inicializar la posición inicial del robot
         self.initial_position = np.array([-0.5456519086166459, -3.060323716659117, -5.581931699989023e-06])  # x, y, z
