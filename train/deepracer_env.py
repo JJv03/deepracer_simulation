@@ -18,7 +18,7 @@ class DeepRacerEnv(gym.Env):
     def __init__(self, waypoints, thickness, long):
         super(DeepRacerEnv, self).__init__()
         self.steps = 0
-        self.max_steps = 100
+        self.max_steps = 10000
         self.ack_publisher = rospy.Publisher('/vesc/low_level/ackermann_cmd_mux/output', AckermannDriveStamped, queue_size=100)
         rospy.Subscriber('/camera/zed/rgb/image_rect_color', sensor_image, self.callback_image)
         rospy.Subscriber('/gazebo/model_states', ModelStates, self.callback_model_states)
@@ -113,11 +113,23 @@ class DeepRacerEnv(gym.Env):
         except (rospy.ServiceException) as e:
             print("/gazebo/pause_physics service call failed")
 
+        # ----------------------------------------- #
+        # Primera aproximación a done por distancia #
+        # ----------------------------------------- #
+        
+        # current_position = self.model_position[:2]  # Solo considerar x, y
+        # distance_step = np.linalg.norm(np.array(current_position) - np.array(self.prev_position))  # Distancia recorrida en este paso
+        # self.distance_traveled += distance_step  # Sumar a la distancia total recorrida
+        # self.prev_position = current_position  # Actualizar posición previa
+
+        # Determinar si el episodio ha terminado
+        # done = self.distance_traveled >= self.long  # Finaliza cuando la distancia recorrida alcanza la longitud total
+
         self.steps += 1
         done = self.steps >= self.max_steps  # Termina el episodio después de max_steps
 
         self.send_action(action[0], action[1])
-        time.sleep(0.1)
+        time.sleep(0.05)
 
         # Calculamos la recompensa
         # s_time = time.time()
