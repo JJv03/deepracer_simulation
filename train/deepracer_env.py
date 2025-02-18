@@ -220,7 +220,7 @@ class DeepRacerEnv(gym.Env):
 
         # Calcular la recompensa de proximidad: 1 en el centro, 0 en el borde
         proximity_reward = 1 - (distance_to_center / max_distance)
-        print("Reward centro:", proximity_reward)
+        # print("Reward centro:", proximity_reward)
 
         # Encontrar el siguiente waypoint más cercano en la secuencia del recorrido
         next_index = (nearest_index + 1) % len(self.waypoints)  # Siguiente waypoint en el recorrido
@@ -229,7 +229,7 @@ class DeepRacerEnv(gym.Env):
         # Calcular el vector de dirección (normalizado)
         direction_vector = np.array(next_waypoint) - np.array(nearest_waypoint)
         direction_vector_normalized = direction_vector / np.linalg.norm(direction_vector)
-        print("Direccion way:", direction_vector_normalized)
+        # print("Direccion way:", direction_vector_normalized)
 
         x, y, z, w = self.model_orientation
         # Calcular el ángulo de giro (Yaw) en el plano XY
@@ -238,17 +238,17 @@ class DeepRacerEnv(gym.Env):
         # Vector dirección en 2D
         car_vector = np.array([np.cos(theta), np.sin(theta)])
         
-        print("Direccion robot:", car_vector)
+        # print("Direccion robot:", car_vector)
         
         # Calcular el coseno del ángulo entre el vector de dirección y el vector de orientación del robot
         cos_angle = np.dot(direction_vector_normalized, car_vector)
         cos = np.degrees(np.arccos(cos_angle))
-        print("Coseno:", cos)
-        print("Coseno res:", cos_angle)
+        # print("Coseno:", cos)
+        # print("Coseno res:", cos_angle)
         
         # Penalización si el robot no está alineado en la dirección correcta
         direction_reward = max(0, cos_angle)  # El coseno del ángulo estará en el rango [-1, 1]
-        print("Reward coseno:", direction_reward)
+        # print("Reward coseno:", direction_reward)
         
         # La recompensa final es una combinación de la proximidad al centro y la alineación con la dirección
         total_reward = (proximity_reward * direction_reward) # * o -, multiplicadores de peso a alguna cosa?
