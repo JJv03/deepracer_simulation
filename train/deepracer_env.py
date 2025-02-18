@@ -29,7 +29,7 @@ class DeepRacerEnv(gym.Env):
         self.image = np.zeros((120, 160, 3), dtype=np.uint8)
         self.model_position = np.zeros(3)
         self.model_orientation = np.zeros(4)
-        self.action_space = spaces.Box(low=np.array([-1.0, 0.0]), high=np.array([1.0, 3.0]), dtype=np.float32)
+        self.action_space = spaces.Box(low=np.array([-1.0, 0.0]), high=np.array([1.0, 5.0]), dtype=np.float32)
         self.observation_space = spaces.Box(low=0, high=255, shape=(120, 160, 3), dtype=np.uint8)
         
         self.waypoints = np.array(waypoints)[:, :2]  # Solo tomar x, y

@@ -84,7 +84,7 @@ def main():
         return
 
     # Crear el entorno de simulación
-    env = DeepRacerEnv(waypoints, thickness, long)  # Se asume que no necesita waypoints al cargar un modelo ya entrenado
+    env = DeepRacerEnv(waypoints, thickness, long)
     env = DummyVecEnv([lambda: Monitor(env)])
     env = VecTransposeImage(env)
     
@@ -96,9 +96,10 @@ def main():
     done = False
     while not done:
         action, _ = model.predict(obs, deterministic=True)
+        #action[:,1] = action[:,1]*5
         obs, reward, done, info = env.step(action)
         env.render()
-        
+    
     print("Ejecución finalizada.")
     env.close()
     cv2.destroyAllWindows()
