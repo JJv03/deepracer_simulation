@@ -77,6 +77,7 @@ def main():
 
     # Configurar rutas
     base_path = os.path.expanduser('~/models/deepracer_eval')
+    #base_path = os.path.expanduser('~/robot_ws/src/deepracer_simulation')
     save_path = os.path.join(base_path, 'best_model.zip')
     
     if not os.path.exists(save_path):
@@ -98,7 +99,6 @@ def main():
         action, _ = model.predict(obs, deterministic=True)
         #action[:,1] = action[:,1]*5
         obs, reward, done, info = env.step(action)
-        env.render()
     
     print("Ejecución finalizada.")
     env.close()
