@@ -32,22 +32,22 @@ class DeepRacerEnv(gym.Env):
         self.action_space = spaces.Box(low=np.array([-1.0, 0.0]), high=np.array([1.0, 5.0]), dtype=np.float32)
         self.observation_space = spaces.Box(low=0, high=255, shape=(120, 160, 3), dtype=np.uint8)
         
-        self.done = False
         self.waypoints = np.array(waypoints)[:, :2]  # Solo tomar x, y
-        self.prevWaypoint
         self.thickness = thickness
         self.long = long
         self.kd_tree = KDTree(self.waypoints)  # Construcción del KD-Tree
 
         self.numWaypoints = 0
+        _, nearest_index = self.kd_tree.query([-0.5456519086166459, -3.060323716659117])
+        self.prevWaypoint = nearest_index
         
         self.times = 0.0
         
         self.speed = 0
 
         # Pesos
-        self.weightWaypoints = 0.9
-        self.weightProxDir = 0.1
+        self.weightProxDir = 0.9
+        self.weightWaypoints = 0.1
 
         # Inicializar la posición inicial del robot
         self.initial_position = np.array([-0.5456519086166459, -3.060323716659117, -5.581931699989023e-06])  # x, y, z
@@ -71,11 +71,12 @@ class DeepRacerEnv(gym.Env):
             print("/gazebo/pause_physics service call failed")
         
         self.reward = None
-        self.done = False
         self.state = None
         self.image = np.zeros((120, 160, 3), dtype=np.uint8)
         self.steps = 0
 
+        _, nearest_index = self.kd_tree.query([-0.5456519086166459, -3.060323716659117])
+        self.prevWaypoint = nearest_index
         self.numWaypoints = 0
 
         # Reiniciar posición en Gazebo
@@ -139,6 +140,8 @@ class DeepRacerEnv(gym.Env):
         # Termina el episodio después de max_steps o ha pasado por todos los waypoints (or self.numWaypoints >= len(self.waypoints))
         if(self.steps >= self.max_steps):
             done = True
+        else:
+            done = False
 
         self.send_action(action[0], action[1])
         time.sleep(0.05)
@@ -152,7 +155,7 @@ class DeepRacerEnv(gym.Env):
 
         # Si el robot se sale del recorrido, reiniciamos
         if reward <= 0.0:  # Fuera del recorrido
-            self.reset()  # Reiniciar la posición
+            #self.reset()  # Reiniciar la posición
             truncated = True  # El episodio se truncó porque el robot se salió de la pista
         else:
             truncated = False  # El episodio continúa normalmente
@@ -222,6 +225,19 @@ class DeepRacerEnv(gym.Env):
         _, nearest_index = self.kd_tree.query(robot_pos)
         nearest_waypoint = self.waypoints[nearest_index]
 
+        #print(self.prevWaypoint, nearest_index, self.numWaypoints)
+        
+        if(self.prevWaypoint != nearest_index):
+            diff = (nearest_index - self.prevWaypoint)
+
+            if diff > 0:
+                self.numWaypoints += diff % len(self.waypoints)
+
+            # print(nearest_index - self.prevWaypoint)
+            # print((nearest_index - self.prevWaypoint)% len(self.waypoints))
+            # print(self.numWaypoints)
+            self.prevWaypoint = nearest_index
+
         # Calcular la distancia al centro de la pista
         distance_to_center = np.linalg.norm(robot_pos - nearest_waypoint)
         
@@ -232,7 +248,7 @@ class DeepRacerEnv(gym.Env):
 
         # Calcular la recompensa de proximidad: 1 en el centro, 0 en el borde
         proximity_reward = 1 - (distance_to_center / max_distance)
-        # print("Reward centro:", proximity_reward)
+        #print("Reward centro:", proximity_reward)
 
         # Encontrar el siguiente waypoint más cercano en la secuencia del recorrido
         next_index = (nearest_index + 1) % len(self.waypoints)  # Siguiente waypoint en el recorrido
@@ -260,10 +276,14 @@ class DeepRacerEnv(gym.Env):
         
         # Penalización si el robot no está alineado en la dirección correcta
         direction_reward = max(0, cos_angle)  # El coseno del ángulo estará en el rango [-1, 1]
-        # print("Reward coseno:", direction_reward)
+        #print("Reward coseno:", direction_reward)
+        waypoints_reward = self.numWaypoints / len(self.waypoints)
+
+        #print("Reward dirPos:", (proximity_reward * direction_reward))
+        #print("Reward dirPos2:", (proximity_reward * direction_reward)*0.9)
         
         # La recompensa final es una combinación de la proximidad al centro y la alineación con la dirección
-        total_reward = (proximity_reward * direction_reward)*self.weightProxDir + self.numWaypoints*self.weightWaypoints # * o -, multiplicadores de peso a alguna cosa?
+        total_reward = (proximity_reward * direction_reward)*self.weightProxDir + waypoints_reward*self.weightWaypoints # * o -, multiplicadores de peso a alguna cosa?
         print("Reward:", total_reward)
         
         return total_reward
