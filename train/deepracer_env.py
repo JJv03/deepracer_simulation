@@ -32,14 +32,22 @@ class DeepRacerEnv(gym.Env):
         self.action_space = spaces.Box(low=np.array([-1.0, 0.0]), high=np.array([1.0, 5.0]), dtype=np.float32)
         self.observation_space = spaces.Box(low=0, high=255, shape=(120, 160, 3), dtype=np.uint8)
         
+        self.done = False
         self.waypoints = np.array(waypoints)[:, :2]  # Solo tomar x, y
+        self.prevWaypoint
         self.thickness = thickness
         self.long = long
         self.kd_tree = KDTree(self.waypoints)  # Construcción del KD-Tree
+
+        self.numWaypoints = 0
         
         self.times = 0.0
         
         self.speed = 0
+
+        # Pesos
+        self.weightWaypoints = 0.9
+        self.weightProxDir = 0.1
 
         # Inicializar la posición inicial del robot
         self.initial_position = np.array([-0.5456519086166459, -3.060323716659117, -5.581931699989023e-06])  # x, y, z
@@ -67,6 +75,8 @@ class DeepRacerEnv(gym.Env):
         self.state = None
         self.image = np.zeros((120, 160, 3), dtype=np.uint8)
         self.steps = 0
+
+        self.numWaypoints = 0
 
         # Reiniciar posición en Gazebo
         self.reset_model_state()
@@ -126,7 +136,9 @@ class DeepRacerEnv(gym.Env):
         # done = self.distance_traveled >= self.long  # Finaliza cuando la distancia recorrida alcanza la longitud total
 
         self.steps += 1
-        done = self.steps >= self.max_steps  # Termina el episodio después de max_steps
+        # Termina el episodio después de max_steps o ha pasado por todos los waypoints (or self.numWaypoints >= len(self.waypoints))
+        if(self.steps >= self.max_steps):
+            done = True
 
         self.send_action(action[0], action[1])
         time.sleep(0.05)
@@ -251,7 +263,7 @@ class DeepRacerEnv(gym.Env):
         # print("Reward coseno:", direction_reward)
         
         # La recompensa final es una combinación de la proximidad al centro y la alineación con la dirección
-        total_reward = (proximity_reward * direction_reward) # * o -, multiplicadores de peso a alguna cosa?
+        total_reward = (proximity_reward * direction_reward)*self.weightProxDir + self.numWaypoints*self.weightWaypoints # * o -, multiplicadores de peso a alguna cosa?
         print("Reward:", total_reward)
         
         return total_reward
