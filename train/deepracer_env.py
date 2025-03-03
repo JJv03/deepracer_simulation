@@ -279,6 +279,10 @@ class DeepRacerEnv(gym.Env):
         #print("Reward coseno:", direction_reward)
         waypoints_reward = self.numWaypoints / len(self.waypoints)
 
+        if (waypoints_reward > 1):
+            waypoints_reward = 1
+            self.numWaypoints = 0
+
         #print("Reward dirPos:", (proximity_reward * direction_reward))
         #print("Reward dirPos2:", (proximity_reward * direction_reward)*0.9)
         
