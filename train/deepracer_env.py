@@ -1,4 +1,5 @@
-import panda as pd
+import os
+import pandas as pd
 import time
 import gymnasium as gym
 from gymnasium import spaces
@@ -56,6 +57,9 @@ class DeepRacerEnv(gym.Env):
         # Inicializar la posición inicial del robot
         self.initial_position = np.array([-0.5456519086166459, -3.060323716659117, -5.581931699989023e-06])  # x, y, z
         self.initial_orientation = np.array([6.1710519125244906e-06, 2.4181460708256078e-05, -0.2583623974492632, 0.9660480686598593])  # x, y, z, w (cuaternión)
+        
+        base_path = os.path.expanduser('~/trajectories')
+        os.makedirs(base_path, exist_ok=True)
 
     def reset(self, seed=None):
         super().reset(seed=seed)
@@ -75,9 +79,9 @@ class DeepRacerEnv(gym.Env):
             print("/gazebo/pause_physics service call failed")
         
         # Si el episodio es múltiplo de 30 y hay datos, guardamos la trayectoria
-        if self.episode_count % 30 == 0 and self.positions:
+        if self.episode_count % 30 == 1 and self.positions:
             df = pd.DataFrame(self.positions, columns=["x", "y"])
-            df.to_csv(f"trajectories/trajectory_ep{self.episode_count}.csv", index=False)
+            df.to_csv(f"~/trajectories/trajectory_ep{self.episode_count}.csv", index=False)
             print(f"Trayectoria del episodio {self.episode_count} guardada en CSV.")
         
         # Reiniciar la lista de posiciones para el nuevo episodio
@@ -157,7 +161,7 @@ class DeepRacerEnv(gym.Env):
         else:
             done = False
 
-        if self.episode_count % 30 == 0:    # 1 de cada X
+        if self.episode_count % 30 == 1:    # 1 de cada X (30)
             self.positions.append((self.model_position[0], self.model_position[1]))
         
         self.send_action(action[0], action[1])
