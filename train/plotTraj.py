@@ -7,7 +7,7 @@ import xml.etree.ElementTree as ET
 trajectory_dir = os.path.expanduser('~/trajectories')
 
 # Archivo DAE que contiene los waypoints
-dae_file = "/home/arob/robot_ws/src/deepracer_simulation/meshes/2022_april_open/2022_april_open.dae"
+dae_file = "/home/jvalle/robot_ws/src/deepracer_simulation/meshes/2022_april_open/2022_april_open.dae"
 
 # Paso para la lectura de waypoints
 step = 1

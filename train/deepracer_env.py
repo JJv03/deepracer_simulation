@@ -51,8 +51,8 @@ class DeepRacerEnv(gym.Env):
         self.speed = 0
 
         # Pesos
-        self.weightProxDir = 0.9
-        self.weightWaypoints = 0.1
+        self.weightProxDir = 0.8
+        self.weightWaypoints = 0.2
 
         # Inicializar la posición inicial del robot
         self.initial_position = np.array([-0.5456519086166459, -3.060323716659117, -5.581931699989023e-06])  # x, y, z
@@ -78,8 +78,8 @@ class DeepRacerEnv(gym.Env):
         except (rospy.ServiceException) as e:
             print("/gazebo/pause_physics service call failed")
         
-        # Si el episodio es múltiplo de 30 y hay datos, guardamos la trayectoria
-        if self.episode_count % 30 == 1 and self.positions:
+        # Si el episodio es múltiplo de 15 y hay datos, guardamos la trayectoria
+        if self.episode_count % 15 == 1 and self.positions:
             df = pd.DataFrame(self.positions, columns=["x", "y"])
             df.to_csv(f"~/trajectories/trajectory_ep{self.episode_count}.csv", index=False)
             print(f"Trayectoria del episodio {self.episode_count} guardada en CSV.")
@@ -161,7 +161,7 @@ class DeepRacerEnv(gym.Env):
         else:
             done = False
 
-        if self.episode_count % 30 == 1:    # 1 de cada X (30)
+        if self.episode_count % 15 == 1:    # 1 de cada X (15)
             self.positions.append((self.model_position[0], self.model_position[1]))
         
         self.send_action(action[0], action[1])
@@ -235,7 +235,7 @@ class DeepRacerEnv(gym.Env):
         if len(self.waypoints) < 2:
             return 0.0  # No hay suficientes waypoints para calcular la dirección
         
-        speed = self.speed
+        speed = self.speed # No debería de ser posible pues el actiónSpace está definido para que como poco sea 0
         if speed < 0:
             return 0.0  # Velocidad negativa (marcha atrás) es un comportamiento incorrecto
 
@@ -248,16 +248,16 @@ class DeepRacerEnv(gym.Env):
 
         #print(self.prevWaypoint, nearest_index, self.numWaypoints)
         
-        if(self.prevWaypoint != nearest_index):
-            diff = (nearest_index - self.prevWaypoint)
+        # if(self.prevWaypoint != nearest_index):
+        #     diff = (nearest_index - self.prevWaypoint)
 
-            if diff > 0:
-                self.numWaypoints += diff % len(self.waypoints)
+        #     if diff > 0:
+        #         self.numWaypoints += diff % len(self.waypoints)
 
-            # print(nearest_index - self.prevWaypoint)
-            # print((nearest_index - self.prevWaypoint)% len(self.waypoints))
-            # print(self.numWaypoints)
-            self.prevWaypoint = nearest_index
+        #     # print(nearest_index - self.prevWaypoint)
+        #     # print((nearest_index - self.prevWaypoint)% len(self.waypoints))
+        #     # print(self.numWaypoints)
+        #     self.prevWaypoint = nearest_index
 
         # Calcular la distancia al centro de la pista
         distance_to_center = np.linalg.norm(robot_pos - nearest_waypoint)
@@ -298,17 +298,20 @@ class DeepRacerEnv(gym.Env):
         # Penalización si el robot no está alineado en la dirección correcta
         direction_reward = max(0, cos_angle)  # El coseno del ángulo estará en el rango [-1, 1]
         #print("Reward coseno:", direction_reward)
-        waypoints_reward = self.numWaypoints / len(self.waypoints)
+        # waypoints_reward = self.numWaypoints / len(self.waypoints)
 
-        if (waypoints_reward > 1):
-            waypoints_reward = 1
-            self.numWaypoints = 0
+        # if (waypoints_reward > 1):
+        #     waypoints_reward = 1
+        #     self.numWaypoints = 0
 
         #print("Reward dirPos:", (proximity_reward * direction_reward))
         #print("Reward dirPos2:", (proximity_reward * direction_reward)*0.9)
+
+        speed_reward = np.exp(-abs(speed - 5)) # ActionSpace de hasta 5 de velocidad
         
         # La recompensa final es una combinación de la proximidad al centro y la alineación con la dirección
-        total_reward = (proximity_reward * direction_reward)*self.weightProxDir + waypoints_reward*self.weightWaypoints # * o -, multiplicadores de peso a alguna cosa?
+        total_reward = (proximity_reward * direction_reward)*self.weightProxDir + speed_reward*self.weightWaypoints
+        #total_reward = (proximity_reward * direction_reward)*self.weightProxDir + waypoints_reward*self.weightWaypoints # * o -, multiplicadores de peso a alguna cosa?
         print("Reward:", total_reward)
         
         return total_reward

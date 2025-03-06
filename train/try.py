@@ -71,7 +71,7 @@ def extract_waypoints(dae_file, step=1):
     return waypoints, distance, long
 
 def main():
-    dae_file = "/home/arob/robot_ws/src/deepracer_simulation/meshes/2022_april_open/2022_april_open.dae"
+    dae_file = "/home/jvalle/robot_ws/src/deepracer_simulation/meshes/2022_april_open/2022_april_open.dae"
     step = 1
     waypoints, thickness, long = extract_waypoints(dae_file, step)
 
