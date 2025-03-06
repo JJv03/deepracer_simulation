@@ -1,4 +1,4 @@
-import os
+import panda as pd
 import time
 import gymnasium as gym
 from gymnasium import spaces
@@ -19,6 +19,10 @@ class DeepRacerEnv(gym.Env):
         super(DeepRacerEnv, self).__init__()
         self.steps = 0
         self.max_steps = 10000
+        
+        self.episode_count = 0  # Contador de episodios
+        self.positions = []     # Almacenar posiciones del coche
+        
         self.ack_publisher = rospy.Publisher('/vesc/low_level/ackermann_cmd_mux/output', AckermannDriveStamped, queue_size=100)
         rospy.Subscriber('/camera/zed/rgb/image_rect_color', sensor_image, self.callback_image)
         rospy.Subscriber('/gazebo/model_states', ModelStates, self.callback_model_states)
@@ -69,6 +73,16 @@ class DeepRacerEnv(gym.Env):
             self.unpause()
         except (rospy.ServiceException) as e:
             print("/gazebo/pause_physics service call failed")
+        
+        # Si el episodio es múltiplo de 30 y hay datos, guardamos la trayectoria
+        if self.episode_count % 30 == 0 and self.positions:
+            df = pd.DataFrame(self.positions, columns=["x", "y"])
+            df.to_csv(f"trajectories/trajectory_ep{self.episode_count}.csv", index=False)
+            print(f"Trayectoria del episodio {self.episode_count} guardada en CSV.")
+        
+        # Reiniciar la lista de posiciones para el nuevo episodio
+        self.positions = []
+        self.episode_count += 1  # Incrementar el número de episodios
         
         self.reward = None
         self.state = None
@@ -143,6 +157,9 @@ class DeepRacerEnv(gym.Env):
         else:
             done = False
 
+        if self.episode_count % 30 == 0:    # 1 de cada X
+            self.positions.append((self.model_position[0], self.model_position[1]))
+        
         self.send_action(action[0], action[1])
         time.sleep(0.05)
 
