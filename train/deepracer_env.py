@@ -78,6 +78,8 @@ class DeepRacerEnv(gym.Env):
         except (rospy.ServiceException) as e:
             print("/gazebo/pause_physics service call failed")
         
+        print("RESET!", self.episode_count)
+
         # Si el episodio es múltiplo de 15 y hay datos, guardamos la trayectoria
         if self.episode_count % 15 == 1 and self.positions:
             df = pd.DataFrame(self.positions, columns=["x", "y"])
@@ -105,7 +107,6 @@ class DeepRacerEnv(gym.Env):
         # Inicializa el estado con valores aleatorios en los rangos definidos
         self.send_action(0, 0)  # Establece el acelerador a 0
         self.speed = 0
-        print("RESET!")
         return self.image, {}  # Devuelve el estado inicial y un diccionario vacío
 
     def reset_model_state(self):
@@ -312,7 +313,7 @@ class DeepRacerEnv(gym.Env):
         # La recompensa final es una combinación de la proximidad al centro y la alineación con la dirección
         total_reward = (proximity_reward * direction_reward)*self.weightProxDir + speed_reward*self.weightWaypoints
         #total_reward = (proximity_reward * direction_reward)*self.weightProxDir + waypoints_reward*self.weightWaypoints # * o -, multiplicadores de peso a alguna cosa?
-        print("Reward:", total_reward)
+        #print("Reward:", total_reward)
         
         return total_reward
 
