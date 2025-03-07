@@ -51,8 +51,8 @@ class DeepRacerEnv(gym.Env):
         self.speed = 0
 
         # Pesos
-        self.weightProxDir = 0.8
-        self.weightWaypoints = 0.2
+        self.weightProxDir = 0.75
+        self.weightWaypoints = 0.25
 
         # Inicializar la posición inicial del robot
         self.initial_position = np.array([-0.5456519086166459, -3.060323716659117, -5.581931699989023e-06])  # x, y, z
@@ -80,8 +80,8 @@ class DeepRacerEnv(gym.Env):
         
         print("RESET!", self.episode_count)
 
-        # Si el episodio es múltiplo de 15 y hay datos, guardamos la trayectoria
-        if self.episode_count % 15 == 1 and self.positions:
+        # Si el episodio es múltiplo de 10 y hay datos, guardamos la trayectoria
+        if self.episode_count % 10 == 1 and self.positions:
             df = pd.DataFrame(self.positions, columns=["x", "y"])
             df.to_csv(f"~/trajectories/trajectory_ep{self.episode_count}.csv", index=False)
             print(f"Trayectoria del episodio {self.episode_count} guardada en CSV.")
@@ -162,7 +162,7 @@ class DeepRacerEnv(gym.Env):
         else:
             done = False
 
-        if self.episode_count % 15 == 1:    # 1 de cada X (15)
+        if self.episode_count % 10 == 1:    # 1 de cada X (10)
             self.positions.append((self.model_position[0], self.model_position[1]))
         
         self.send_action(action[0], action[1])
