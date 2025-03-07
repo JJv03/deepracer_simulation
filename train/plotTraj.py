@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import os
 import xml.etree.ElementTree as ET
+import re
 
 # Directorio donde están las trayectorias
 trajectory_dir = os.path.expanduser('~/trajectories')
@@ -38,20 +39,24 @@ for float_array in root.iter('{http://www.collada.org/2005/11/COLLADASchema}floa
 # Crear la figura para graficar las trayectorias y los waypoints
 plt.figure(figsize=(10, 10))
 
-# Recorrer todos los archivos en el directorio de trayectorias en orden inverso
-for filename in sorted(os.listdir(trajectory_dir), reverse=True):
-    if filename.startswith("trajectory") and filename.endswith(".csv"):
-        filepath = os.path.join(trajectory_dir, filename)
-        
-        # Leer la trayectoria
-        df = pd.read_csv(filepath)
-        
-        # Asegurarse de que las columnas "x" y "y" sean válidas
-        if df["x"].dtype in ['float64', 'int64'] and df["y"].dtype in ['float64', 'int64']:
-            # Graficar la trayectoria
-            plt.plot(df["x"].values, df["y"].values, label=filename)
-        else:
-            print(f"Advertencia: Datos no válidos en el archivo {filename}")
+# Obtener la lista de archivos y extraer el número de episodio
+files = sorted(
+    [f for f in os.listdir(trajectory_dir) if f.startswith("trajectory") and f.endswith(".csv")], 
+    key=lambda x: int(re.search(r'ep(\d+)', x).group(1)))
+
+# Recorrer los archivos con un índice para manejar zorder
+for i, filename in enumerate(files):
+    filepath = os.path.join(trajectory_dir, filename)
+    
+    # Leer la trayectoria
+    df = pd.read_csv(filepath)
+    
+    # Asegurarse de que las columnas "x" y "y" sean válidas
+    if df["x"].dtype in ['float64', 'int64'] and df["y"].dtype in ['float64', 'int64']:
+        # Asignar un zorder mayor a trayectorias más recientes
+        plt.plot(df["x"].values, df["y"].values, label=filename, zorder=len(files) - i)
+    else:
+        print(f"Advertencia: Datos no válidos en el archivo {filename}")
 
 # Graficar los waypoints
 waypoints_x = [wp[0] for wp in waypoints]
