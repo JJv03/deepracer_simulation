@@ -38,8 +38,8 @@ for float_array in root.iter('{http://www.collada.org/2005/11/COLLADASchema}floa
 # Crear la figura para graficar las trayectorias y los waypoints
 plt.figure(figsize=(10, 10))
 
-# Recorrer todos los archivos en el directorio de trayectorias
-for filename in sorted(os.listdir(trajectory_dir)):
+# Recorrer todos los archivos en el directorio de trayectorias en orden inverso
+for filename in sorted(os.listdir(trajectory_dir), reverse=True):
     if filename.startswith("trajectory") and filename.endswith(".csv"):
         filepath = os.path.join(trajectory_dir, filename)
         
