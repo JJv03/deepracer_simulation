@@ -90,7 +90,7 @@ def main():
     env = VecTransposeImage(env)
     
     # Cargar el modelo entrenado
-    model = PPO.load(save_path, env=env)
+    model = PPO.load(save_path)
     print("Modelo cargado exitosamente.")
     
     obs = env.reset()
