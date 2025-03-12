@@ -269,11 +269,12 @@ class DeepRacerEnv(gym.Env):
             return 0.0  # Fuera de la pista
 
         # Calcular la recompensa de proximidad: 1 en el centro, 0 en el borde
-        proximity_reward = 1 - (distance_to_center / max_distance)
-        #print("Reward centro:", proximity_reward)
+        # proximity_reward = 1 - (distance_to_center / max_distance)
+        # print("Reward centro:", proximity_reward)
 
         # Encontrar el siguiente waypoint más cercano en la secuencia del recorrido
-        next_index = (nearest_index + 1) % len(self.waypoints)  # Siguiente waypoint en el recorrido
+        # next_index = (nearest_index + 1) % len(self.waypoints)  # Siguiente waypoint en el recorrido
+        next_index = (nearest_index + 4) % len(self.waypoints)  # Siguiente 4º waypoint en el recorrido
         next_waypoint = self.waypoints[next_index]
 
         # Calcular el vector de dirección (normalizado)
@@ -308,7 +309,7 @@ class DeepRacerEnv(gym.Env):
         #print("Reward dirPos:", (proximity_reward * direction_reward))
         #print("Reward dirPos2:", (proximity_reward * direction_reward)*0.9)
 
-        speed_reward = np.exp(-abs(speed - 5)) # ActionSpace de hasta 5 de velocidad
+        # speed_reward = np.exp(-abs(speed - 5)) # ActionSpace de hasta 5 de velocidad
         
         # La recompensa final es una combinación de la proximidad al centro y la alineación con la dirección
         total_reward = (proximity_reward * direction_reward)*self.weightProxDir + speed_reward*self.weightWaypoints
