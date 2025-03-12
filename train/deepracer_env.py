@@ -45,6 +45,8 @@ class DeepRacerEnv(gym.Env):
         self.numWaypoints = 0
         _, nearest_index = self.kd_tree.query([-0.5456519086166459, -3.060323716659117])
         self.prevWaypoint = nearest_index
+        self.distance = 4
+        self.distanceBetweenWaypoints = np.linalg.norm(self.waypoints[nearest_index] - self.waypoints[(nearest_index+1)%len(self.waypoints)]) * self.distance
         
         self.times = 0.0
         
@@ -274,8 +276,12 @@ class DeepRacerEnv(gym.Env):
 
         # Encontrar el siguiente waypoint más cercano en la secuencia del recorrido
         # next_index = (nearest_index + 1) % len(self.waypoints)  # Siguiente waypoint en el recorrido
-        next_index = (nearest_index + 4) % len(self.waypoints)  # Siguiente 4º waypoint en el recorrido
+        next_index = (nearest_index + self.distance) % len(self.waypoints)  # Siguiente self.distance waypoint en el recorrido
         next_waypoint = self.waypoints[next_index]
+        
+        distanceToNext = np.linalg.norm(robot_pos - next_waypoint)
+        
+        proximity_reward = 1 - (distanceToNext / self.distanceBetweenWaypoints)
 
         # Calcular el vector de dirección (normalizado)
         direction_vector = np.array(next_waypoint) - np.array(nearest_waypoint)
@@ -312,7 +318,8 @@ class DeepRacerEnv(gym.Env):
         # speed_reward = np.exp(-abs(speed - 5)) # ActionSpace de hasta 5 de velocidad
         
         # La recompensa final es una combinación de la proximidad al centro y la alineación con la dirección
-        total_reward = (proximity_reward * direction_reward)*self.weightProxDir + speed_reward*self.weightWaypoints
+        total_reward = (proximity_reward)*self.weightProxDir + direction_reward*self.weightWaypoints
+        #total_reward = (proximity_reward * direction_reward)*self.weightProxDir + speed_reward*self.weightWaypoints
         #total_reward = (proximity_reward * direction_reward)*self.weightProxDir + waypoints_reward*self.weightWaypoints # * o -, multiplicadores de peso a alguna cosa?
         #print("Reward:", total_reward)
         
