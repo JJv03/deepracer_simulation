@@ -284,7 +284,7 @@ class DeepRacerEnv(gym.Env):
         
         # proximity_reward = max(0, 1 - (distanceToNext / self.distanceBetweenWaypoints))
         proximity_reward = np.exp(-distanceToNext / self.distanceBetweenWaypoints)
-        print("distance:", distanceToNext, "average:", self.distanceBetweenWaypoints)
+        # print("distance:", distanceToNext, "average:", self.distanceBetweenWaypoints)
 
         # Calcular el vector de dirección (normalizado)
         direction_vector = np.array(next_waypoint) - np.array(nearest_waypoint)
@@ -326,7 +326,7 @@ class DeepRacerEnv(gym.Env):
         #total_reward = (proximity_reward * direction_reward)*self.weightProxDir + waypoints_reward*self.weightWaypoints # * o -, multiplicadores de peso a alguna cosa?
         # print("Reward prox:", proximity_reward)
         # print("Reward dir:", direction_reward)
-        # print("Reward:", total_reward)
+        print("Reward:", total_reward)
         
         return total_reward
 
