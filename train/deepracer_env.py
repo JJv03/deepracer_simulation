@@ -22,6 +22,7 @@ class DeepRacerEnv(gym.Env):
         self.max_steps = 10000
         
         self.episode_count = 0  # Contador de episodios
+        self.frecTraj = 5       # cada cuantas trayectorias se guarda
         self.positions = []     # Almacenar posiciones del coche
         
         self.ack_publisher = rospy.Publisher('/vesc/low_level/ackermann_cmd_mux/output', AckermannDriveStamped, queue_size=100)
@@ -53,8 +54,8 @@ class DeepRacerEnv(gym.Env):
         self.speed = 0
 
         # Pesos
-        self.weightProxDir = 0.75
-        self.weightWaypoints = 0.25
+        self.weightProxDir = 0.70
+        self.weightWaypoints = 0.30
 
         # Inicializar la posición inicial del robot
         self.initial_position = np.array([-0.5456519086166459, -3.060323716659117, -5.581931699989023e-06])  # x, y, z
@@ -82,8 +83,8 @@ class DeepRacerEnv(gym.Env):
         
         print("RESET!", self.episode_count)
 
-        # Si el episodio es múltiplo de 10 y hay datos, guardamos la trayectoria
-        if self.episode_count % 10 == 1 and self.positions:
+        # Si el episodio es múltiplo de self.frecTraj y hay datos, guardamos la trayectoria
+        if self.episode_count % self.frecTraj == 1 and self.positions:
             df = pd.DataFrame(self.positions, columns=["x", "y"])
             df.to_csv(f"~/trajectories/trajectory_ep{self.episode_count}.csv", index=False)
             print(f"Trayectoria del episodio {self.episode_count} guardada en CSV.")
@@ -164,7 +165,7 @@ class DeepRacerEnv(gym.Env):
         else:
             done = False
 
-        if self.episode_count % 10 == 1:    # 1 de cada X (10)
+        if self.episode_count % self.frecTraj == 1:    # 1 de cada X (self.frecTraj)
             self.positions.append((self.model_position[0], self.model_position[1]))
         
         self.send_action(action[0], action[1])
@@ -281,7 +282,9 @@ class DeepRacerEnv(gym.Env):
         
         distanceToNext = np.linalg.norm(robot_pos - next_waypoint)
         
-        proximity_reward = 1 - (distanceToNext / self.distanceBetweenWaypoints)
+        # proximity_reward = max(0, 1 - (distanceToNext / self.distanceBetweenWaypoints))
+        proximity_reward = np.exp(-distanceToNext / self.distanceBetweenWaypoints)
+        print("distance:", distanceToNext, "average:", self.distanceBetweenWaypoints)
 
         # Calcular el vector de dirección (normalizado)
         direction_vector = np.array(next_waypoint) - np.array(nearest_waypoint)
@@ -299,7 +302,7 @@ class DeepRacerEnv(gym.Env):
         
         # Calcular el coseno del ángulo entre el vector de dirección y el vector de orientación del robot
         cos_angle = np.dot(direction_vector_normalized, car_vector)
-        cos = np.degrees(np.arccos(cos_angle))
+        # cos = np.degrees(np.arccos(cos_angle))
         # print("Coseno:", cos)
         # print("Coseno res:", cos_angle)
         
@@ -318,10 +321,12 @@ class DeepRacerEnv(gym.Env):
         # speed_reward = np.exp(-abs(speed - 5)) # ActionSpace de hasta 5 de velocidad
         
         # La recompensa final es una combinación de la proximidad al centro y la alineación con la dirección
-        total_reward = (proximity_reward)*self.weightProxDir + direction_reward*self.weightWaypoints
+        total_reward = proximity_reward*self.weightProxDir + direction_reward*self.weightWaypoints
         #total_reward = (proximity_reward * direction_reward)*self.weightProxDir + speed_reward*self.weightWaypoints
         #total_reward = (proximity_reward * direction_reward)*self.weightProxDir + waypoints_reward*self.weightWaypoints # * o -, multiplicadores de peso a alguna cosa?
-        #print("Reward:", total_reward)
+        # print("Reward prox:", proximity_reward)
+        # print("Reward dir:", direction_reward)
+        # print("Reward:", total_reward)
         
         return total_reward
 
