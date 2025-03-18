@@ -65,6 +65,14 @@ waypoints_y = [wp[1] for wp in waypoints]
 # Graficar los waypoints con un estilo diferente (por ejemplo, círculos rojos)
 plt.scatter(waypoints_x, waypoints_y, color='red', marker='o', label="Waypoints", zorder=0)
 
+for i in range(len(waypoints)):
+    if(i % 6 == 0):
+        if i + 6 < len(waypoints):
+            x_start, y_start = waypoints[i][0], waypoints[i][1]
+            x_end, y_end = waypoints[i + 6][0], waypoints[i + 6][1]
+            plt.arrow(x_start, y_start, x_end - x_start, y_end - y_start, 
+                    head_width=0.1, head_length=0.1, fc='blue', ec='blue', alpha=0.6)
+
 # Estilizar el gráfico
 plt.xlabel("Posición X")
 plt.ylabel("Posición Y")

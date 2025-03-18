@@ -46,7 +46,7 @@ class DeepRacerEnv(gym.Env):
         self.numWaypoints = 0
         _, nearest_index = self.kd_tree.query([-0.5456519086166459, -3.060323716659117])
         self.prevWaypoint = nearest_index
-        self.distance = 4
+        self.distance = 6
         self.distanceBetweenWaypoints = np.linalg.norm(self.waypoints[nearest_index] - self.waypoints[(nearest_index+1)%len(self.waypoints)]) * self.distance
         
         self.times = 0.0

@@ -74,11 +74,14 @@ def main():
     dae_file = "/home/jvalle/robot_ws/src/deepracer_simulation/meshes/2022_april_open/2022_april_open.dae"
     step = 1
     waypoints, thickness, long = extract_waypoints(dae_file, step)
+    print(waypoints)
 
     # Configurar rutas
-    base_path = os.path.expanduser('~/models/deepracer_eval')
-    #base_path = os.path.expanduser('~/robot_ws/src/deepracer_simulation')
-    save_path = os.path.join(base_path, 'best_model.zip')
+    # base_path = os.path.expanduser('~/models/deepracer_eval')
+    # save_path = os.path.join(base_path, 'best_model.zip')
+
+    base_path = os.path.expanduser('~/models')
+    save_path = os.path.join(base_path, 'deepracer_model.zip')
     
     if not os.path.exists(save_path):
         print(f"No se encontró un modelo entrenado en {save_path}")
