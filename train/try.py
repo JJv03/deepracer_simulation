@@ -74,7 +74,6 @@ def main():
     dae_file = "/home/jvalle/robot_ws/src/deepracer_simulation/meshes/2022_april_open/2022_april_open.dae"
     step = 1
     waypoints, thickness, long = extract_waypoints(dae_file, step)
-    print(waypoints)
 
     # Configurar rutas
     # base_path = os.path.expanduser('~/models/deepracer_eval')
