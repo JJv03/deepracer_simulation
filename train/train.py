@@ -82,7 +82,6 @@ def main():
     env = DummyVecEnv([lambda: Monitor(env)])   # Envuelve el entorno en Monitor y lo vectoriza
     env = VecTransposeImage(env)                # Ajusta el formato de imágenes para redes neuronales convolucionales
 
-
     # Configurar rutas
     base_path = os.path.expanduser('~/models')
     logs_path = os.path.join(base_path, 'deepracer_logs')
