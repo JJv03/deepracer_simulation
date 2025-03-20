@@ -54,8 +54,8 @@ class DeepRacerEnv(gym.Env):
         self.speed = 0
 
         # Pesos
-        self.weightProxDir = 0.40
-        self.weightWaypoints = 0.40
+        self.weightProxDir = 0.45
+        self.weightWaypoints = 0.45
         self.weightSpeed = 0.5
 
         # Inicializar la posición inicial del robot
