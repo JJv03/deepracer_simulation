@@ -113,7 +113,7 @@ def main():
     # Entrenar el modelo
     try:
         print("Comenzando el entrenamiento...")
-        model.learn(total_timesteps=100000, callback=[checkpoint_callback, eval_callback])
+        model.learn(total_timesteps=50000, callback=[checkpoint_callback, eval_callback])
         model.save(save_path)
         print(f"Modelo guardado exitosamente en {save_path}")
         print("Entrenamiento finalizado")
