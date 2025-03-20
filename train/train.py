@@ -9,6 +9,7 @@ from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv, VecTransposeImage
 from deepracer_env import DeepRacerEnv
 import xml.etree.ElementTree as ET
+import torch
 
 def calcular_distancia(punto1, punto2):
     return math.sqrt((punto2[0] - punto1[0])**2 + (punto2[1] - punto1[1])**2 + (punto2[2] - punto1[2])**2)
@@ -72,6 +73,10 @@ def extract_waypoints(dae_file, step=1):
     return waypoints, distance, long
     
 def main():
+    print(torch.cuda.is_available())  # Debería imprimir True
+    print(torch.cuda.device_count())  # Número de GPUs detectadas (al menos 1)
+    print(torch.cuda.get_device_name(0))  # Nombre de la GPU
+
     # Configuración de los waypoints
     dae_file = "/home/jvalle/robot_ws/src/deepracer_simulation/meshes/2022_april_open/2022_april_open.dae"
     step = 1
@@ -96,18 +101,19 @@ def main():
     # Configurar el modelo con hiperparámetros ajustados
     model = PPO(
         "CnnPolicy", env, verbose=1, tensorboard_log=logs_path,
-        learning_rate=5e-4, gamma=0.99, n_steps=2048, batch_size=64, clip_range=0.2
+        learning_rate=5e-4, gamma=0.99, n_steps=4096, batch_size=512, clip_range=0.2,
+        device="cuda"
     )
 
     # Callbacks para evaluar y guardar el modelo
     checkpoint_callback = CheckpointCallback(save_freq=2000, save_path=save_path, name_prefix="deepracer_checkpoint")
 
     eval_callback = EvalCallback(env, best_model_save_path=eval_path, log_path=eval_path, eval_freq=5000, deterministic=True, render=False)
-
+    print(f"Entrenando en: {model.policy.device}")
     # Entrenar el modelo
     try:
         print("Comenzando el entrenamiento...")
-        model.learn(total_timesteps=50000, callback=[checkpoint_callback, eval_callback])
+        model.learn(total_timesteps=100000, callback=[checkpoint_callback, eval_callback])
         model.save(save_path)
         print(f"Modelo guardado exitosamente en {save_path}")
         print("Entrenamiento finalizado")

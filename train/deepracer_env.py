@@ -46,7 +46,7 @@ class DeepRacerEnv(gym.Env):
         self.numWaypoints = 0
         _, nearest_index = self.kd_tree.query([-0.5456519086166459, -3.060323716659117])
         self.prevWaypoint = nearest_index
-        self.distance = 6
+        self.distance = 4
         self.distanceBetweenWaypoints = np.linalg.norm(self.waypoints[nearest_index] - self.waypoints[(nearest_index+1)%len(self.waypoints)]) * self.distance
         
         self.times = 0.0
@@ -54,8 +54,9 @@ class DeepRacerEnv(gym.Env):
         self.speed = 0
 
         # Pesos
-        self.weightProxDir = 0.70
-        self.weightWaypoints = 0.30
+        self.weightProxDir = 0.40
+        self.weightWaypoints = 0.40
+        self.weightSpeed = 0.5
 
         # Inicializar la posición inicial del robot
         self.initial_position = np.array([-0.5456519086166459, -3.060323716659117, -5.581931699989023e-06])  # x, y, z
@@ -283,8 +284,12 @@ class DeepRacerEnv(gym.Env):
         distanceToNext = np.linalg.norm(robot_pos - next_waypoint)
         
         # proximity_reward = max(0, 1 - (distanceToNext / self.distanceBetweenWaypoints))
-        proximity_reward = np.exp(-distanceToNext / self.distanceBetweenWaypoints)
+        proximity_reward = np.clip(distanceToNext / self.distanceBetweenWaypoints, 0, 1)
+        # print("Reward centro:", proximity_reward)
         # print("distance:", distanceToNext, "average:", self.distanceBetweenWaypoints)
+
+        next_index = (nearest_index + 1) % len(self.waypoints)  # Siguiente waypoint en el recorrido
+        next_waypoint = self.waypoints[next_index]
 
         # Calcular el vector de dirección (normalizado)
         direction_vector = np.array(next_waypoint) - np.array(nearest_waypoint)
@@ -302,13 +307,13 @@ class DeepRacerEnv(gym.Env):
         
         # Calcular el coseno del ángulo entre el vector de dirección y el vector de orientación del robot
         cos_angle = np.dot(direction_vector_normalized, car_vector)
-        # cos = np.degrees(np.arccos(cos_angle))
+        cos = np.degrees(np.arccos(cos_angle))
         # print("Coseno:", cos)
         # print("Coseno res:", cos_angle)
         
         # Penalización si el robot no está alineado en la dirección correcta
         direction_reward = max(0, cos_angle)  # El coseno del ángulo estará en el rango [-1, 1]
-        #print("Reward coseno:", direction_reward)
+        # print("Reward coseno:", direction_reward)
         # waypoints_reward = self.numWaypoints / len(self.waypoints)
 
         # if (waypoints_reward > 1):
@@ -319,14 +324,15 @@ class DeepRacerEnv(gym.Env):
         #print("Reward dirPos2:", (proximity_reward * direction_reward)*0.9)
 
         # speed_reward = np.exp(-abs(speed - 5)) # ActionSpace de hasta 5 de velocidad
+        speed_reward = speed/5
         
         # La recompensa final es una combinación de la proximidad al centro y la alineación con la dirección
-        total_reward = proximity_reward*self.weightProxDir + direction_reward*self.weightWaypoints
+        total_reward = proximity_reward*self.weightProxDir + direction_reward*self.weightWaypoints + speed_reward*self.weightSpeed
         #total_reward = (proximity_reward * direction_reward)*self.weightProxDir + speed_reward*self.weightWaypoints
         #total_reward = (proximity_reward * direction_reward)*self.weightProxDir + waypoints_reward*self.weightWaypoints # * o -, multiplicadores de peso a alguna cosa?
         # print("Reward prox:", proximity_reward)
         # print("Reward dir:", direction_reward)
-        print("Reward:", total_reward)
+        # print("Reward:", total_reward)
         
         return total_reward
 

@@ -46,6 +46,8 @@ files = sorted(
 
 # Recorrer los archivos con un índice para manejar zorder
 for i, filename in enumerate(files):
+    # if i > 6:
+    #     break # Mostras las X trayectorias primeras 
     filepath = os.path.join(trajectory_dir, filename)
     
     # Leer la trayectoria
@@ -65,6 +67,7 @@ waypoints_y = [wp[1] for wp in waypoints]
 # Graficar los waypoints con un estilo diferente (por ejemplo, círculos rojos)
 plt.scatter(waypoints_x, waypoints_y, color='red', marker='o', label="Waypoints", zorder=0)
 
+# Mostrar direcciones waypoints
 for i in range(len(waypoints)):
     if(i % 6 == 0):
         if i + 6 < len(waypoints):
