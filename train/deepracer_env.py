@@ -54,9 +54,9 @@ class DeepRacerEnv(gym.Env):
         self.speed = 0
 
         # Pesos
-        self.weightProxDir = 0.45
-        self.weightWaypoints = 0.45
-        self.weightSpeed = 0.5
+        self.weightProx = 0.5
+        self.weightDir = 0.5
+        self.weightSpeed = 0.25
 
         # Inicializar la posición inicial del robot
         self.initial_position = np.array([-0.5456519086166459, -3.060323716659117, -5.581931699989023e-06])  # x, y, z
@@ -307,7 +307,7 @@ class DeepRacerEnv(gym.Env):
         
         # Calcular el coseno del ángulo entre el vector de dirección y el vector de orientación del robot
         cos_angle = np.dot(direction_vector_normalized, car_vector)
-        cos = np.degrees(np.arccos(cos_angle))
+        # cos = np.degrees(np.arccos(cos_angle))
         # print("Coseno:", cos)
         # print("Coseno res:", cos_angle)
         
@@ -327,7 +327,7 @@ class DeepRacerEnv(gym.Env):
         speed_reward = speed/5
         
         # La recompensa final es una combinación de la proximidad al centro y la alineación con la dirección
-        total_reward = proximity_reward*self.weightProxDir + direction_reward*self.weightWaypoints + speed_reward*self.weightSpeed
+        total_reward = proximity_reward*self.weightProx + direction_reward*self.weightDir + speed_reward*self.weightSpeed
         #total_reward = (proximity_reward * direction_reward)*self.weightProxDir + speed_reward*self.weightWaypoints
         #total_reward = (proximity_reward * direction_reward)*self.weightProxDir + waypoints_reward*self.weightWaypoints # * o -, multiplicadores de peso a alguna cosa?
         # print("Reward prox:", proximity_reward)
