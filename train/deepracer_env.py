@@ -276,7 +276,11 @@ class DeepRacerEnv(gym.Env):
         # distanceToNext = np.linalg.norm(robot_pos - next_waypoint)
         
         # # proximity_reward = max(0, 1 - (distanceToNext / self.distanceBetweenWaypoints))
-        # proximity_reward = np.clip(distanceToNext / self.distanceBetweenWaypoints, 0, 1)
+        
+        # /////////// REVISAR el - de np.clip y quitar clip ///////////
+        
+        # proximity_reward = -np.clip(distanceToNext / self.distanceBetweenWaypoints, 0, 1)
+        
         # # print("Reward centro:", proximity_reward)
         # # print("distance:", distanceToNext, "average:", self.distanceBetweenWaypoints)
 
@@ -298,13 +302,12 @@ class DeepRacerEnv(gym.Env):
         # print("Direccion robot:", car_vector)
         
         # Calcular el coseno del ángulo entre el vector de dirección y el vector de orientación del robot
-        cos_angle = np.dot(direction_vector_normalized, car_vector)
+        direction_reward = np.dot(direction_vector_normalized, car_vector) # El coseno del ángulo estará en el rango [-1, 1]
         # cos = np.degrees(np.arccos(cos_angle))
         # print("Coseno:", cos)
         # print("Coseno res:", cos_angle)
         
         # Penalización si el robot no está alineado en la dirección correcta
-        direction_reward = max(0, cos_angle)  # El coseno del ángulo estará en el rango [-1, 1]
         # print("Reward coseno:", direction_reward)
         # waypoints_reward = self.numWaypoints / len(self.waypoints)
 
