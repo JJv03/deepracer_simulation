@@ -54,9 +54,8 @@ class DeepRacerEnv(gym.Env):
         self.speed = 0
 
         # Pesos
-        self.weightProx = 0.5
-        self.weightDir = 0.5
-        self.weightSpeed = 0.25
+        self.weightDir = 0.4
+        self.weightSpeed = 0.6
 
         # Inicializar la posición inicial del robot
         self.initial_position = np.array([-0.5456519086166459, -3.060323716659117, -5.581931699989023e-06])  # x, y, z
@@ -174,17 +173,10 @@ class DeepRacerEnv(gym.Env):
 
         # Calculamos la recompensa
         # s_time = time.time()
-        reward = self.reward_func()
+        reward, truncated = self.reward_func()
         # f_time = time.time()
         # dif = f_time-s_time
         # self.times += dif
-
-        # Si el robot se sale del recorrido, reiniciamos
-        if reward <= 0.0:  # Fuera del recorrido
-            #self.reset()  # Reiniciar la posición
-            truncated = True  # El episodio se truncó porque el robot se salió de la pista
-        else:
-            truncated = False  # El episodio continúa normalmente
 
         rospy.wait_for_service('/gazebo/pause_physics')
         try:
@@ -238,11 +230,11 @@ class DeepRacerEnv(gym.Env):
         4. Reducir la reward en base a la velocidad
         """
         if len(self.waypoints) < 2:
-            return 0.0  # No hay suficientes waypoints para calcular la dirección
+            return -1, True  # No hay suficientes waypoints para calcular la dirección
         
         speed = self.speed # No debería de ser posible pues el actiónSpace está definido para que como poco sea 0
         if speed < 0:
-            return 0.0  # Velocidad negativa (marcha atrás) es un comportamiento incorrecto
+            return -1, True  # Velocidad negativa (marcha atrás) es un comportamiento incorrecto
 
         # Obtener la posición actual del robot
         robot_pos = self.model_position[:2]  # Solo usar las coordenadas x, y
@@ -270,7 +262,7 @@ class DeepRacerEnv(gym.Env):
         # Calcular la recompensa en base al grosor
         max_distance = self.thickness / 2  # Distancia máxima permitida desde el centro
         if distance_to_center > max_distance:
-            return 0.0  # Fuera de la pista
+            return -100, True  # Fuera de la pista
 
         # Calcular la recompensa de proximidad: 1 en el centro, 0 en el borde
         # proximity_reward = 1 - (distance_to_center / max_distance)
@@ -278,15 +270,15 @@ class DeepRacerEnv(gym.Env):
 
         # Encontrar el siguiente waypoint más cercano en la secuencia del recorrido
         # next_index = (nearest_index + 1) % len(self.waypoints)  # Siguiente waypoint en el recorrido
-        next_index = (nearest_index + self.distance) % len(self.waypoints)  # Siguiente self.distance waypoint en el recorrido
-        next_waypoint = self.waypoints[next_index]
+        # next_index = (nearest_index + self.distance) % len(self.waypoints)  # Siguiente self.distance waypoint en el recorrido
+        # next_waypoint = self.waypoints[next_index]
         
-        distanceToNext = np.linalg.norm(robot_pos - next_waypoint)
+        # distanceToNext = np.linalg.norm(robot_pos - next_waypoint)
         
-        # proximity_reward = max(0, 1 - (distanceToNext / self.distanceBetweenWaypoints))
-        proximity_reward = np.clip(distanceToNext / self.distanceBetweenWaypoints, 0, 1)
-        # print("Reward centro:", proximity_reward)
-        # print("distance:", distanceToNext, "average:", self.distanceBetweenWaypoints)
+        # # proximity_reward = max(0, 1 - (distanceToNext / self.distanceBetweenWaypoints))
+        # proximity_reward = np.clip(distanceToNext / self.distanceBetweenWaypoints, 0, 1)
+        # # print("Reward centro:", proximity_reward)
+        # # print("distance:", distanceToNext, "average:", self.distanceBetweenWaypoints)
 
         next_index = (nearest_index + 1) % len(self.waypoints)  # Siguiente waypoint en el recorrido
         next_waypoint = self.waypoints[next_index]
@@ -327,14 +319,21 @@ class DeepRacerEnv(gym.Env):
         speed_reward = speed/5
         
         # La recompensa final es una combinación de la proximidad al centro y la alineación con la dirección
-        total_reward = proximity_reward*self.weightProx + direction_reward*self.weightDir + speed_reward*self.weightSpeed
+        # total_reward = proximity_reward*self.weightProx + direction_reward*self.weightDir
+        total_reward = direction_reward*self.weightDir + speed_reward*self.weightSpeed
+
+        if speed < 1:
+            total_reward -= 0.5
+        elif speed < 2:
+            total_reward -= 0.3
+        
         #total_reward = (proximity_reward * direction_reward)*self.weightProxDir + speed_reward*self.weightWaypoints
         #total_reward = (proximity_reward * direction_reward)*self.weightProxDir + waypoints_reward*self.weightWaypoints # * o -, multiplicadores de peso a alguna cosa?
         # print("Reward prox:", proximity_reward)
         # print("Reward dir:", direction_reward)
         # print("Reward:", total_reward)
         
-        return total_reward
+        return total_reward, False
 
     def close(self):
         rospy.signal_shutdown("Cierre del entorno DeepRacer.")
