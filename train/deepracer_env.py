@@ -169,7 +169,7 @@ class DeepRacerEnv(gym.Env):
             self.positions.append((self.model_position[0], self.model_position[1]))
         
         self.send_action(action[0], action[1])
-        time.sleep(0.05)
+        # time.sleep(0.05)
 
         # Calculamos la recompensa
         # s_time = time.time()
