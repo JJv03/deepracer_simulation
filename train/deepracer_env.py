@@ -54,7 +54,8 @@ class DeepRacerEnv(gym.Env):
         self.speed = 0
 
         # Pesos
-        self.weightDir = 0.4
+        self.weightProx = 0.7
+        self.weightDir = 1
         self.weightSpeed = 0.6
 
         # Inicializar la posición inicial del robot
@@ -229,12 +230,13 @@ class DeepRacerEnv(gym.Env):
         3. La dirección que el robot debe seguir calculada en base a los dos waypoints más cercanos.
         4. Reducir la reward en base a la velocidad
         """
+        total_reward = 0
         if len(self.waypoints) < 2:
             return -1, True  # No hay suficientes waypoints para calcular la dirección
         
         speed = self.speed # No debería de ser posible pues el actiónSpace está definido para que como poco sea 0
         if speed < 0:
-            return -1, True  # Velocidad negativa (marcha atrás) es un comportamiento incorrecto
+            return -1000, True  # Velocidad negativa (marcha atrás) es un comportamiento incorrecto
 
         # Obtener la posición actual del robot
         robot_pos = self.model_position[:2]  # Solo usar las coordenadas x, y
@@ -245,16 +247,20 @@ class DeepRacerEnv(gym.Env):
 
         #print(self.prevWaypoint, nearest_index, self.numWaypoints)
         
-        # if(self.prevWaypoint != nearest_index):
-        #     diff = (nearest_index - self.prevWaypoint)
+        if(self.prevWaypoint != nearest_index):
+            diff = (nearest_index - self.prevWaypoint)
 
-        #     if diff > 0:
-        #         self.numWaypoints += diff % len(self.waypoints)
+            if diff > 0:
+                self.numWaypoints += diff % len(self.waypoints)
 
-        #     # print(nearest_index - self.prevWaypoint)
-        #     # print((nearest_index - self.prevWaypoint)% len(self.waypoints))
-        #     # print(self.numWaypoints)
-        #     self.prevWaypoint = nearest_index
+            # print("Dif waypoints:", nearest_index - self.prevWaypoint)
+            # print("Waypoints pasados", self.numWaypoints)
+            self.prevWaypoint = nearest_index
+
+        if (self.numWaypoints >= len(self.waypoints)):
+            total_reward += self.max_steps - self.steps # Al haber superado todos los waypoints le recompenso con los steps que le faltan aunque siga corriendo
+            print("Todos los waypoints han sido superados, recompensa de: ", total_reward)
+            self.numWaypoints = 0 # Reiniciar variable a 0
 
         # Calcular la distancia al centro de la pista
         distance_to_center = np.linalg.norm(robot_pos - nearest_waypoint)
@@ -270,19 +276,15 @@ class DeepRacerEnv(gym.Env):
 
         # Encontrar el siguiente waypoint más cercano en la secuencia del recorrido
         # next_index = (nearest_index + 1) % len(self.waypoints)  # Siguiente waypoint en el recorrido
-        # next_index = (nearest_index + self.distance) % len(self.waypoints)  # Siguiente self.distance waypoint en el recorrido
-        # next_waypoint = self.waypoints[next_index]
+        next_index = (nearest_index + self.distance) % len(self.waypoints)  # Siguiente self.distance waypoint en el recorrido
+        next_waypoint = self.waypoints[next_index]
         
-        # distanceToNext = np.linalg.norm(robot_pos - next_waypoint)
+        distanceToNext = np.linalg.norm(robot_pos - next_waypoint)
+                        
+        proximity_reward = -(distanceToNext / self.distanceBetweenWaypoints)
         
-        # # proximity_reward = max(0, 1 - (distanceToNext / self.distanceBetweenWaypoints))
-        
-        # /////////// REVISAR el - de np.clip y quitar clip ///////////
-        
-        # proximity_reward = -np.clip(distanceToNext / self.distanceBetweenWaypoints, 0, 1)
-        
-        # # print("Reward centro:", proximity_reward)
-        # # print("distance:", distanceToNext, "average:", self.distanceBetweenWaypoints)
+        # print("Reward centro:", proximity_reward)
+        # print("distance:", distanceToNext, "average:", self.distanceBetweenWaypoints)
 
         next_index = (nearest_index + 1) % len(self.waypoints)  # Siguiente waypoint en el recorrido
         next_waypoint = self.waypoints[next_index]
@@ -303,32 +305,23 @@ class DeepRacerEnv(gym.Env):
         
         # Calcular el coseno del ángulo entre el vector de dirección y el vector de orientación del robot
         direction_reward = np.dot(direction_vector_normalized, car_vector) # El coseno del ángulo estará en el rango [-1, 1]
-        # cos = np.degrees(np.arccos(cos_angle))
+        cos = np.degrees(np.arccos(direction_reward))
         # print("Coseno:", cos)
-        # print("Coseno res:", cos_angle)
+        # print("Coseno res:", direction_reward)
         
-        # Penalización si el robot no está alineado en la dirección correcta
-        # print("Reward coseno:", direction_reward)
-        # waypoints_reward = self.numWaypoints / len(self.waypoints)
-
-        # if (waypoints_reward > 1):
-        #     waypoints_reward = 1
-        #     self.numWaypoints = 0
-
-        #print("Reward dirPos:", (proximity_reward * direction_reward))
-        #print("Reward dirPos2:", (proximity_reward * direction_reward)*0.9)
-
         # speed_reward = np.exp(-abs(speed - 5)) # ActionSpace de hasta 5 de velocidad
-        speed_reward = speed/5
+        # speed_reward = speed/5
         
         # La recompensa final es una combinación de la proximidad al centro y la alineación con la dirección
         # total_reward = proximity_reward*self.weightProx + direction_reward*self.weightDir
-        total_reward = direction_reward*self.weightDir + speed_reward*self.weightSpeed
+        total_reward = proximity_reward*self.weightProx + direction_reward*self.weightDir
 
         if speed < 1:
-            total_reward -= 0.5
+            total_reward -= 1
         elif speed < 2:
-            total_reward -= 0.3
+            total_reward -= 0.5
+        else:
+            total_reward += 1
         
         #total_reward = (proximity_reward * direction_reward)*self.weightProxDir + speed_reward*self.weightWaypoints
         #total_reward = (proximity_reward * direction_reward)*self.weightProxDir + waypoints_reward*self.weightWaypoints # * o -, multiplicadores de peso a alguna cosa?

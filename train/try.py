@@ -97,12 +97,11 @@ def main():
     
     obs = env.reset()
     done = False
-    truncated = False
-    while not done and not truncated:
+    while not done:
         action, _ = model.predict(obs, deterministic=True)
         #action[:,1] = action[:,1]*5
         print ("Ang:", action[:,0], "Vel:", action[:,1])
-        obs, reward, done, truncated, info = env.step(action)
+        obs, reward, done, info = env.step(action)
         print("Rew:", reward)
     
     print("Ejecución finalizada.")
