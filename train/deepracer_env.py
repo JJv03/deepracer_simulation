@@ -321,7 +321,7 @@ class DeepRacerEnv(gym.Env):
         elif speed < 2:
             total_reward -= 0.5
         else:
-            total_reward += 1
+            total_reward += 5
         
         #total_reward = (proximity_reward * direction_reward)*self.weightProxDir + speed_reward*self.weightWaypoints
         #total_reward = (proximity_reward * direction_reward)*self.weightProxDir + waypoints_reward*self.weightWaypoints # * o -, multiplicadores de peso a alguna cosa?
