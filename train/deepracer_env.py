@@ -295,8 +295,14 @@ class DeepRacerEnv(gym.Env):
             waypoint_progress_reward * 1.0         # Progress through waypoints
         )
         
-        return total_reward, False
+        if speed < 0.3:
+           total_reward -= 10
+        elif speed < 1:
+            total_reward -= 2.0 / speed
+        else:
+            total_reward += 0.5
 
+        return total_reward, False
 
     def close(self):
         rospy.signal_shutdown("Cierre del entorno DeepRacer.")
