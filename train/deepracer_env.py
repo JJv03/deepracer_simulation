@@ -54,7 +54,7 @@ class DeepRacerEnv(gym.Env):
         self.speed = 0
 
         # Pesos
-        self.weightProx = 0.7
+        self.weightProx = 1
         self.weightDir = 1
         self.weightSpeed = 0.6
 
@@ -224,112 +224,79 @@ class DeepRacerEnv(gym.Env):
 
     def reward_func(self):
         """
-        Calcula la recompensa basada en:
-        1. La proximidad al centro de la pista según el grosor permitido.
-        2. Si el robot se sale del recorrido, retorna 0.
-        3. La dirección que el robot debe seguir calculada en base a los dos waypoints más cercanos.
-        4. Reducir la reward en base a la velocidad
+        Calculates reward based on:
+        1. Track center adherence
+        2. Carrot-on-stick approach using hyperbolic reward
+        3. Progressive waypoint completion
         """
         total_reward = 0
         if len(self.waypoints) < 2:
-            return -1, True  # No hay suficientes waypoints para calcular la dirección
+            return -1, True  # Not enough waypoints to calculate direction
         
-        speed = self.speed # No debería de ser posible pues el actiónSpace está definido para que como poco sea 0
+        speed = self.speed
         if speed < 0:
-            return -1000, True  # Velocidad negativa (marcha atrás) es un comportamiento incorrecto
+            return -1000, True  # Negative speed (reverse) is incorrect behavior
 
-        # Obtener la posición actual del robot
-        robot_pos = self.model_position[:2]  # Solo usar las coordenadas x, y
 
-        # Encontrar el waypoint más cercano usando KD-Tree
+        # Get current robot position
+        robot_pos = self.model_position[:2]  # Only use x, y coordinates
+
+        # Find nearest waypoint using KD-Tree
         _, nearest_index = self.kd_tree.query(robot_pos)
         nearest_waypoint = self.waypoints[nearest_index]
 
-        #print(self.prevWaypoint, nearest_index, self.numWaypoints)
-        
-        if(self.prevWaypoint != nearest_index):
+        # Check if out of bounds
+        distance_to_center = np.linalg.norm(robot_pos - nearest_waypoint)
+        max_distance = self.thickness / 2
+        if distance_to_center > max_distance:
+            return -(self.max_steps - self.steps), True
+
+        # Track completed waypoints and calculate progressive waypoint reward
+        waypoint_progress_reward = 0
+        if self.prevWaypoint != nearest_index:
             diff = (nearest_index - self.prevWaypoint)
-
             if diff > 0:
-                self.numWaypoints += diff % len(self.waypoints)
-
-            # print("Dif waypoints:", nearest_index - self.prevWaypoint)
-            # print("Waypoints pasados", self.numWaypoints)
+                waypoint_increment = diff % len(self.waypoints)
+                self.numWaypoints += waypoint_increment
+                
+                # Calculate percentage of track completed so far
+                # track_completion_pct = min(1.0, self.numWaypoints / len(self.waypoints))
+                
+                # Progressive reward: increases as more of the track is completed
+                base_reward_per_waypoint = 1.0
+                # scaling_factor = 1.0 + track_completion_pct  # Scales from 1.0 to 2.0
+                
+                waypoint_progress_reward = waypoint_increment * base_reward_per_waypoint
+                
             self.prevWaypoint = nearest_index
 
-        if (self.numWaypoints >= len(self.waypoints)):
-            total_reward += self.max_steps - self.steps # Al haber superado todos los waypoints le recompenso con los steps que le faltan aunque siga corriendo
-            print("Todos los waypoints han sido superados, recompensa de: ", total_reward)
-            self.numWaypoints = 0 # Reiniciar variable a 0
+        # Bonus for completing all waypoints
+        if self.numWaypoints >= len(self.waypoints):
+            total_reward += self.max_steps - self.steps
+            print("All waypoints completed, bonus reward:", self.max_steps - self.steps)
+            self.numWaypoints = 0
 
-        # Calcular la distancia al centro de la pista
-        distance_to_center = np.linalg.norm(robot_pos - nearest_waypoint)
+        # Calculate center reward
+        center_reward = 1.0 - (distance_to_center / max_distance)
         
-        # Calcular la recompensa en base al grosor
-        max_distance = self.thickness / 2  # Distancia máxima permitida desde el centro
-        if distance_to_center > max_distance:
-            return -100, True  # Fuera de la pista
-
-        # Calcular la recompensa de proximidad: 1 en el centro, 0 en el borde
-        # proximity_reward = 1 - (distance_to_center / max_distance)
-        # print("Reward centro:", proximity_reward)
-
-        # Encontrar el siguiente waypoint más cercano en la secuencia del recorrido
-        # next_index = (nearest_index + 1) % len(self.waypoints)  # Siguiente waypoint en el recorrido
-        next_index = (nearest_index + self.distance) % len(self.waypoints)  # Siguiente self.distance waypoint en el recorrido
+        # Proximity reward (carrot-on-stick approach)
+        next_index = (nearest_index + self.distance) % len(self.waypoints)
         next_waypoint = self.waypoints[next_index]
         
         distanceToNext = np.linalg.norm(robot_pos - next_waypoint)
-                        
-        proximity_reward = -(distanceToNext / self.distanceBetweenWaypoints)
         
-        # print("Reward centro:", proximity_reward)
-        # print("distance:", distanceToNext, "average:", self.distanceBetweenWaypoints)
-
-        next_index = (nearest_index + 1) % len(self.waypoints)  # Siguiente waypoint en el recorrido
-        next_waypoint = self.waypoints[next_index]
-
-        # Calcular el vector de dirección (normalizado)
-        direction_vector = np.array(next_waypoint) - np.array(nearest_waypoint)
-        direction_vector_normalized = direction_vector / np.linalg.norm(direction_vector)
-        # print("Direccion way:", direction_vector_normalized)
-
-        x, y, z, w = self.model_orientation
-        # Calcular el ángulo de giro (Yaw) en el plano XY
-        theta = np.arctan2(2 * (w * z + x * y), 1 - 2 * (x**2 + z**2))
+        # Hyperbolic reward function that increases as car gets closer to target
+        proximity_reward = 2.0 / (1.0 + distanceToNext / self.distanceBetweenWaypoints)
         
-        # Vector dirección en 2D
-        car_vector = np.array([np.cos(theta), np.sin(theta)])
-        
-        # print("Direccion robot:", car_vector)
-        
-        # Calcular el coseno del ángulo entre el vector de dirección y el vector de orientación del robot
-        direction_reward = np.dot(direction_vector_normalized, car_vector) # El coseno del ángulo estará en el rango [-1, 1]
-        cos = np.degrees(np.arccos(direction_reward))
-        # print("Coseno:", cos)
-        # print("Coseno res:", direction_reward)
-        
-        # speed_reward = np.exp(-abs(speed - 5)) # ActionSpace de hasta 5 de velocidad
-        # speed_reward = speed/5
-        
-        # La recompensa final es una combinación de la proximidad al centro y la alineación con la dirección
-        # total_reward = proximity_reward*self.weightProx + direction_reward*self.weightDir
-        total_reward = proximity_reward*self.weightProx + direction_reward*self.weightDir
-
-        if speed < 1:
-            total_reward -= 1
-        elif speed < 2:
-            total_reward -= 0.5
-        else:
-            total_reward += 5
-        
-        #total_reward = (proximity_reward * direction_reward)*self.weightProxDir + speed_reward*self.weightWaypoints
-        #total_reward = (proximity_reward * direction_reward)*self.weightProxDir + waypoints_reward*self.weightWaypoints # * o -, multiplicadores de peso a alguna cosa?
-        # print("Reward prox:", proximity_reward)
-        # print("Reward dir:", direction_reward)
-        # print("Reward:", total_reward)
+        # Combine rewards (without direction and speed components)
+        total_reward = (
+            center_reward * 0.3 +                  # Stay centered on track (increased weight)
+            proximity_reward * self.weightProx +   # Chase the carrot (target waypoint)
+            waypoint_progress_reward * 1.0         # Progress through waypoints
+        )
         
         return total_reward, False
+
 
     def close(self):
         rospy.signal_shutdown("Cierre del entorno DeepRacer.")

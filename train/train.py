@@ -10,33 +10,38 @@ from stable_baselines3.common.vec_env import DummyVecEnv, VecTransposeImage
 from deepracer_env import DeepRacerEnv
 import xml.etree.ElementTree as ET
 import torch
-from torch.utils.tensorboard import SummaryWriter
+import csv
 
-class TensorboardLoggingCallback(BaseCallback):
+class CSVLoggingCallback(BaseCallback):
     def __init__(self, verbose=0):
         base_path = os.path.expanduser('~/models')
         logs_path = os.path.join(base_path, 'deepracer_logs')
-        log_dir = os.path.join (logs_path, 'actions_reward')
+        log_dir = os.path.join(logs_path, 'actions_reward')
         super().__init__(verbose)
         os.makedirs(log_dir, exist_ok=True)
-        self.writer = SummaryWriter(log_dir=log_dir)
+        self.csv_file = os.path.join(log_dir, 'training_log.csv')
+
+        # Crear archivo y escribir encabezado si no existe
+        if not os.path.exists(self.csv_file):
+            with open(self.csv_file, mode='w', newline='') as file:
+                writer = csv.writer(file)
+                writer.writerow(["step", "action_wheel_angle", "action_speed", "reward"])
 
     def _on_step(self) -> bool:
         step = self.num_timesteps  # Número de pasos de entrenamiento
         actions = self.locals["actions"]
         rewards = self.locals["rewards"]
-        
-        for i, action in enumerate(actions):
-            self.writer.add_scalar(f"train/action_{i}/wheel_angle", action[0], step)
-            self.writer.add_scalar(f"train/action_{i}/speed", action[1], step)
-        
-        for i, reward in enumerate(rewards):
-            self.writer.add_scalar(f"train/reward_{i}", reward, step)
-        
+
+        with open(self.csv_file, mode='a', newline='') as file:
+            writer = csv.writer(file)
+            for i, (action, reward) in enumerate(zip(actions, rewards)):
+                writer.writerow([step, action[0], action[1], reward])
+
         return True
 
     def _on_training_end(self) -> None:
-        self.writer.close()
+        print(f"Training log saved to {self.csv_file}")
+
 
 def calcular_distancia(punto1, punto2):
     return math.sqrt((punto2[0] - punto1[0])**2 + (punto2[1] - punto1[1])**2 + (punto2[2] - punto1[2])**2)
@@ -137,12 +142,12 @@ def main():
     
     eval_callback = EvalCallback(env, best_model_save_path=eval_path, log_path=eval_path, eval_freq=5000, deterministic=True, render=False)
 
-    tensor_callback = TensorboardLoggingCallback()
+    csv_callback = CSVLoggingCallback()
     print(f"Entrenando en: {model.policy.device}")
     # Entrenar el modelo
     try:
         print("Comenzando el entrenamiento...")
-        model.learn(total_timesteps=50000, callback=[checkpoint_callback, eval_callback, tensor_callback])
+        model.learn(total_timesteps=50000, callback=[checkpoint_callback, eval_callback, csv_callback])
         model.save(save_path)
         print(f"Modelo guardado exitosamente en {save_path}")
         print("Entrenamiento finalizado")
