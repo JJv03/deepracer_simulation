@@ -76,11 +76,11 @@ def main():
     waypoints, thickness, long = extract_waypoints(dae_file, step)
 
     # Configurar rutas
-    base_path = os.path.expanduser('~/models/deepracer_eval')
-    save_path = os.path.join(base_path, 'best_model.zip')
+    # base_path = os.path.expanduser('~/models/deepracer_eval')
+    # save_path = os.path.join(base_path, 'best_model.zip')
 
-    # base_path = os.path.expanduser('~/models')
-    # save_path = os.path.join(base_path, 'deepracer_model.zip')
+    base_path = os.path.expanduser('~/models')
+    save_path = os.path.join(base_path, 'deepracer_model.zip')
     
     if not os.path.exists(save_path):
         print(f"No se encontró un modelo entrenado en {save_path}")

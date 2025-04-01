@@ -133,7 +133,7 @@ def main():
     # Configurar el modelo con hiperparámetros ajustados
     model = PPO(
         "CnnPolicy", env, verbose=1, tensorboard_log=logs_path,
-        learning_rate=5e-4, gamma=0.99, n_steps=4096, batch_size=512, clip_range=0.2,
+        learning_rate=5e-4, gamma=0.99, n_steps=2048, batch_size=64, clip_range=0.2,
         device="cuda"
     )
 

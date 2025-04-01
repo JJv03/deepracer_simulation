@@ -235,6 +235,7 @@ class DeepRacerEnv(gym.Env):
         
         speed = self.speed
         if speed < 0:
+            print("VELOCIDADDDDD")
             return -1000, True  # Negative speed (reverse) is incorrect behavior
 
 
@@ -249,6 +250,7 @@ class DeepRacerEnv(gym.Env):
         distance_to_center = np.linalg.norm(robot_pos - nearest_waypoint)
         max_distance = self.thickness / 2
         if distance_to_center > max_distance:
+            print("FUERA DE PISTAAAAA")
             return -(self.max_steps - self.steps), True
 
         # Track completed waypoints and calculate progressive waypoint reward
@@ -298,7 +300,7 @@ class DeepRacerEnv(gym.Env):
         if speed < 0.3:
            total_reward -= 10
         elif speed < 1:
-            total_reward -= 2.0 / speed
+            total_reward -= 1.0 / speed
         else:
             total_reward += 0.5
 
