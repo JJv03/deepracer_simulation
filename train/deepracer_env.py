@@ -250,6 +250,29 @@ class DeepRacerEnv(gym.Env):
         _, nearest_index = self.kd_tree.query(robot_pos)
         nearest_waypoint = self.waypoints[nearest_index]
 
+        next_index = (nearest_index + 1) % len(self.waypoints)  # Siguiente waypoint en el recorrido
+        next_waypoint = self.waypoints[next_index]
+
+        # Calcular el vector de dirección (normalizado)
+        direction_vector = np.array(next_waypoint) - np.array(nearest_waypoint)
+        direction_vector_normalized = direction_vector / np.linalg.norm(direction_vector)
+
+        x, y, z, w = self.model_orientation
+        # Calcular el ángulo de giro (Yaw) en el plano XY
+        theta = np.arctan2(2 * (w * z + x * y), 1 - 2 * (x**2 + z**2))
+        
+        # Vector dirección en 2D
+        car_vector = np.array([np.cos(theta), np.sin(theta)])
+        
+        # print("Direccion robot:", car_vector)
+        
+        # Calcular el coseno del ángulo entre el vector de dirección y el vector de orientación del robot
+        cos_angle = np.dot(direction_vector_normalized, car_vector)
+
+        if(cos_angle < 0):
+            print("DIRECCIÓN CONTRARIA")
+            return -(self.max_steps - self.steps), True
+
         # Check if out of bounds
         distance_to_center = np.linalg.norm(robot_pos - nearest_waypoint)
         max_distance = self.thickness / 2
@@ -292,7 +315,8 @@ class DeepRacerEnv(gym.Env):
         # Combine rewards (without direction and speed components)
         total_reward = (
             center_reward * 0.5 +                  # Stay centered on track (increased weight)
-            proximity_reward * self.weightProx     # Chase the carrot (target waypoint)
+            proximity_reward * self.weightProx +     # Chase the carrot (target waypoint)
+            cos_angle
         )
 
         # print("Center reward:", center_reward)
