@@ -54,7 +54,7 @@ class DeepRacerEnv(gym.Env):
         self.speed = 0
 
         # Pesos
-        self.weightProx = 1
+        self.weightProx = 2.5
         self.weightDir = 1
         self.weightSpeed = 0.6
 
@@ -62,6 +62,10 @@ class DeepRacerEnv(gym.Env):
         self.initial_position = np.array([-0.5456519086166459, -3.060323716659117, -5.581931699989023e-06])  # x, y, z
         self.initial_orientation = np.array([6.1710519125244906e-06, 2.4181460708256078e-05, -0.2583623974492632, 0.9660480686598593])  # x, y, z, w (cuaternión)
         
+        self.prevPos = [0, 0]
+        self.prevPos[0] = self.initial_position[0]
+        self.prevPos[1] = self.initial_position[1]
+
         base_path = os.path.expanduser('~/trajectories')
         os.makedirs(base_path, exist_ok=True)
 
@@ -235,7 +239,7 @@ class DeepRacerEnv(gym.Env):
         
         speed = self.speed
         if speed < 0:
-            print("VELOCIDADDDDD")
+            print("VELOCIDAD")
             return -1000, True  # Negative speed (reverse) is incorrect behavior
 
 
@@ -250,25 +254,15 @@ class DeepRacerEnv(gym.Env):
         distance_to_center = np.linalg.norm(robot_pos - nearest_waypoint)
         max_distance = self.thickness / 2
         if distance_to_center > max_distance:
-            print("FUERA DE PISTAAAAA")
+            print("FUERA DE PISTA")
             return -(self.max_steps - self.steps), True
 
         # Track completed waypoints and calculate progressive waypoint reward
-        waypoint_progress_reward = 0
         if self.prevWaypoint != nearest_index:
             diff = (nearest_index - self.prevWaypoint)
             if diff > 0:
                 waypoint_increment = diff % len(self.waypoints)
                 self.numWaypoints += waypoint_increment
-                
-                # Calculate percentage of track completed so far
-                # track_completion_pct = min(1.0, self.numWaypoints / len(self.waypoints))
-                
-                # Progressive reward: increases as more of the track is completed
-                base_reward_per_waypoint = 1.0
-                # scaling_factor = 1.0 + track_completion_pct  # Scales from 1.0 to 2.0
-                
-                waypoint_progress_reward = waypoint_increment * base_reward_per_waypoint
                 
             self.prevWaypoint = nearest_index
 
@@ -286,23 +280,32 @@ class DeepRacerEnv(gym.Env):
         next_waypoint = self.waypoints[next_index]
         
         distanceToNext = np.linalg.norm(robot_pos - next_waypoint)
+        distanceToNextPrev = np.linalg.norm(self.prevPos - next_waypoint)
         
+        self.prevPos = robot_pos
+
         # Hyperbolic reward function that increases as car gets closer to target
-        proximity_reward = 2.0 / (1.0 + distanceToNext / self.distanceBetweenWaypoints)
+        proximity_reward = distanceToNextPrev - distanceToNext
+        # print("Prev:", distanceToNextPrev)
+        # print("Actual:", distanceToNext)
         
         # Combine rewards (without direction and speed components)
         total_reward = (
-            center_reward * 0.3 +                  # Stay centered on track (increased weight)
-            proximity_reward * self.weightProx +   # Chase the carrot (target waypoint)
-            waypoint_progress_reward * 1.0         # Progress through waypoints
+            center_reward * 0.5 +                  # Stay centered on track (increased weight)
+            proximity_reward * self.weightProx     # Chase the carrot (target waypoint)
         )
+
+        # print("Center reward:", center_reward)
+        # print("Prox reward:", proximity_reward)
         
         if speed < 0.3:
-           total_reward -= 10
+           total_reward -= 5.0
         elif speed < 1:
             total_reward -= 1.0 / speed
         else:
-            total_reward += 0.5
+            total_reward += 1.0
+
+        # print("Total reward:", total_reward)
 
         return total_reward, False
 
