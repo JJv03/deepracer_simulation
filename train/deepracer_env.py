@@ -282,20 +282,19 @@ class DeepRacerEnv(gym.Env):
 
         # Track completed waypoints and calculate progressive waypoint reward
         if self.prevWaypoint != nearest_index:
-            diff = (nearest_index - self.prevWaypoint)
-            if diff > 0:
-                waypoint_increment = diff % len(self.waypoints)
-                self.numWaypoints += waypoint_increment
+            diff = (nearest_index - self.prevWaypoint) %  len(self.waypoints)
+            waypoint_increment = diff
+            self.numWaypoints += waypoint_increment
                 
             self.prevWaypoint = nearest_index
 
-        # Bonus for completing all waypoints
+        # Bonus for completing all waypoints (NO MAS REWARD POR PASAR META, REWARD POR AVANZAR) wp increment por reward
         if self.numWaypoints >= len(self.waypoints):
             total_reward += self.max_steps - self.steps
             print("All waypoints completed, bonus reward:", self.max_steps - self.steps)
             self.numWaypoints = 0
 
-        # Calculate center reward
+        # Calculate center reward (TANGENCIAL, ANTES HE HECO EL COSENO, PUES AHORA SENO)
         center_reward = 1.0 - (distance_to_center / max_distance)
         
         # Proximity reward (carrot-on-stick approach)

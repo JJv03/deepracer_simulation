@@ -11,6 +11,7 @@ from deepracer_env import DeepRacerEnv
 import xml.etree.ElementTree as ET
 import torch
 import csv
+import numpy as np
 
 class CSVLoggingCallback(BaseCallback):
     def __init__(self, verbose=0):
@@ -35,7 +36,7 @@ class CSVLoggingCallback(BaseCallback):
         with open(self.csv_file, mode='a', newline='') as file:
             writer = csv.writer(file)
             for i, (action, reward) in enumerate(zip(actions, rewards)):
-                writer.writerow([step, action[0], action[1], reward])
+                writer.writerow([step, np.clip(action[0], -1.0, 1.0), np.clip(action[1], 0.0, 5.0), reward])
 
         return True
 
