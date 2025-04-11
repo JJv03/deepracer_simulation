@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<launch>
+  <!-- Argumentos -->
+  <arg name="world_name" default="2022_april_open" />
+  <arg name="gui" default="true" /> <!-- Flag para la interfaz gráfica -->
+
+  <!-- Incluir el archivo racetrack_with_racecar.launch -->
+  <include file="$(find deepracer_simulation)/launch/racetrack_with_racecar.launch">
+    <arg name="world_name" value="$(arg world_name)" />
+    <arg name="gui" value="$(arg gui)" />
+  </include>
+
+  <!-- Nodo del controlador: se lanza después de la simulación -->
+  <node name="ackermann_controller" pkg="deepracer_simulation" type="ackermann_controller.py" output="screen" />
+</launch>
