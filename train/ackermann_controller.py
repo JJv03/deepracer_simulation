@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import rospy
+from gazebo_msgs.msg import ModelStates
 from ackermann_msgs.msg import AckermannDriveStamped
 from PyQt5 import QtWidgets, QtCore
 import sys
@@ -20,17 +21,32 @@ class AckermannGUI(QtWidgets.QWidget):
         # Etiquetas para mostrar valores actuales
         self.speed_label = QtWidgets.QLabel(f"Speed: {self.speed:.1f} m/s")
         self.steering_label = QtWidgets.QLabel(f"Steering Angle: {self.steering:.2f} rad")
+        self.position_label = QtWidgets.QLabel("Position: N/A")
 
         # Layout
         layout = QtWidgets.QVBoxLayout()
         layout.addWidget(self.speed_label)
         layout.addWidget(self.steering_label)
+        layout.addWidget(self.position_label)
         self.setLayout(layout)
 
         # Timer para publicar los valores de velocidad y dirección
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect(self.publish_cmd)
         self.timer.start(100)  # Publicar cada 100 ms (10Hz)
+
+        # Suscripción a la posición del modelo en Gazebo
+        self.sub = rospy.Subscriber('/gazebo/model_states', ModelStates, self.model_state_callback)
+
+    def model_state_callback(self, msg):
+        # Obtener la posición del vehículo en la simulación
+        vehicle_index = msg.name.index("racecar")  # Asegúrate de que el nombre del modelo sea "racecar" o el que corresponda en tu caso
+        position = msg.pose[vehicle_index].position
+        self.update_position_label(position)
+
+    def update_position_label(self, position):
+        # Actualizar la etiqueta de la posición
+        self.position_label.setText(f"Position: x={position.x:.2f}, y={position.y:.2f}, z={position.z:.2f}")
 
     def keyPressEvent(self, event):
         """Captura las teclas presionadas y realiza las acciones correspondientes"""
