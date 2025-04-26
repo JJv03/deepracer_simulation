@@ -45,6 +45,7 @@ files = sorted(
     key=lambda x: int(re.search(r'ep(\d+)', x).group(1)))
 
 # Recorrer los archivos con un índice para manejar zorder
+print(len(files), "trajectories")
 # for i, filename in enumerate(files[-10:]):
 for i, filename in enumerate(files):
     # if i > 10:

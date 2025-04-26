@@ -132,14 +132,20 @@ def main():
     os.makedirs(eval_path, exist_ok=True)
 
     # Configurar el modelo con hiperparámetros ajustados
+    # model = PPO(
+    #     "CnnPolicy", env, verbose=1, tensorboard_log=logs_path,
+    #     learning_rate=2.5e-4, gamma=0.99, n_steps=2048, batch_size=128, clip_range=0.25,
+    #     device="cuda"
+    # )
+
     model = PPO(
         "CnnPolicy", env, verbose=1, tensorboard_log=logs_path,
-        learning_rate=2.5e-4, gamma=0.99, n_steps=2048, batch_size=128, clip_range=0.25,
+        learning_rate=2.5e-4, gamma=0.99, n_steps=2048, batch_size=64, clip_range=0.2, gae_lambda=0.95,
         device="cuda"
     )
 
     # Callbacks para evaluar y guardar el modelo
-    checkpoint_callback = CheckpointCallback(save_freq=2000, save_path=save_path, name_prefix="deepracer_checkpoint")
+    checkpoint_callback = CheckpointCallback(save_freq=50000, save_path=save_path, name_prefix="deepracer_checkpoint")
     
     eval_callback = EvalCallback(env, best_model_save_path=eval_path, log_path=eval_path, eval_freq=5000, deterministic=True, render=False)
 
@@ -148,7 +154,7 @@ def main():
     # Entrenar el modelo
     try:
         print("Comenzando el entrenamiento...")
-        model.learn(total_timesteps=50000, callback=[checkpoint_callback, eval_callback, csv_callback])
+        model.learn(total_timesteps=5000000, callback=[checkpoint_callback, eval_callback, csv_callback])
         model.save(save_path)
         print(f"Modelo guardado exitosamente en {save_path}")
         print("Entrenamiento finalizado")

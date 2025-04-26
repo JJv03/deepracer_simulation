@@ -20,6 +20,7 @@ class DeepRacerEnv(gym.Env):
         super(DeepRacerEnv, self).__init__()
         self.steps = 0
         self.max_steps = 10000
+        self.stuck_steps = 0
         
         self.episode_count = 0  # Contador de episodios
         self.frecTraj = 5       # cada cuantas trayectorias se guarda
@@ -102,6 +103,7 @@ class DeepRacerEnv(gym.Env):
         self.state = None
         self.image = np.zeros((120, 160, 3), dtype=np.uint8)
         self.steps = 0
+        self.stuck_steps = 0
 
         _, nearest_index = self.kd_tree.query([-0.5456519086166459, -3.060323716659117])
         self.prevWaypoint = nearest_index
@@ -174,7 +176,7 @@ class DeepRacerEnv(gym.Env):
             self.positions.append((self.model_position[0], self.model_position[1]))
         
         self.send_action(action[0], action[1])
-        # time.sleep(0.025)
+        time.sleep(0.025)
 
         # Calculamos la recompensa
         # s_time = time.time()
@@ -272,7 +274,7 @@ class DeepRacerEnv(gym.Env):
         if(cos_angle < 0):
             print("DIRECCIÓN CONTRARIA")
             # return -(self.max_steps - self.steps), True
-            return -5, True
+            return -10000, True
 
         # Check if out of bounds
         distance_to_center = np.linalg.norm(robot_pos - nearest_waypoint)
@@ -280,15 +282,23 @@ class DeepRacerEnv(gym.Env):
         if distance_to_center > max_distance:
             print("FUERA DE PISTA")
             # return -(self.max_steps - self.steps), True
-            return -10, True
+            return -10000, True
 
         # Track completed waypoints and calculate progressive waypoint reward
         if self.prevWaypoint != nearest_index:
-            diff = (nearest_index - self.prevWaypoint) %  len(self.waypoints)
+            diff = (nearest_index - self.prevWaypoint) % len(self.waypoints)
+            # print("Diff", diff)
+            # print("Nearest", nearest_index)
+            # print("Prev", self.prevWaypoint)
             waypoint_increment = diff
             self.numWaypoints += waypoint_increment
                 
             self.prevWaypoint = nearest_index
+            self.stuck_steps = 0
+        else:
+            self.stuck_steps += 1
+            if(self.stuck_steps >= 100):    # Si no avanza tras 100 steps se comienza a penalizar mucho
+                total_reward -= 10
 
         # Bonus for completing all waypoints (NO MAS REWARD POR PASAR META, REWARD POR AVANZAR) wp increment por reward
         if self.numWaypoints >= len(self.waypoints):
@@ -315,20 +325,20 @@ class DeepRacerEnv(gym.Env):
         
         # Combine rewards (without direction and speed components)
         total_reward = (
-            center_reward * 0.5 +                  # Stay centered on track (increased weight)
-            proximity_reward * self.weightProx +     # Chase the carrot (target waypoint)
+            center_reward * 0.5 +                       # Stay centered on track (increased weight)
+            proximity_reward * self.weightProx +        # Chase the carrot (target waypoint)
             cos_angle
         )
 
         # print("Center reward:", center_reward)
         # print("Prox reward:", proximity_reward)
         
-        if speed < 0.3:
-           total_reward -= 5.0
-        elif speed < 1:
-            total_reward -= 1.0 / speed
-        else:
-            total_reward += 1.0
+        # if speed < 0.3:
+        #    total_reward -= 5.0
+        # elif speed < 1:
+        #     total_reward -= 1.0 / speed
+        # else:
+        #     total_reward += 1.0
 
         # print("Total reward:", total_reward)
 
