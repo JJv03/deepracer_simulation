@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 # Importaciones necesarias
+import os
 import numpy as np
 from scipy.spatial import KDTree
-from stable_baselines3.common.vec_env import DummyVecEnv
+from stable_baselines3.common.monitor import Monitor
+from stable_baselines3.common.vec_env import DummyVecEnv, VecTransposeImage
 from imitation.data import rollout
 from deepracer_env import DeepRacerEnv
 from train import extract_waypoints
@@ -75,7 +77,9 @@ step = 1  # Resolución de waypoints
 waypoints, thickness, long = extract_waypoints(dae_file, step)
 
 # Crear entorno vectorizado para entrenamiento
-venv = DummyVecEnv([lambda: DeepRacerEnv(waypoints, thickness, long)])
+venv = DeepRacerEnv(waypoints, thickness, long)     # Crea el entorno de simulación DeepRacer
+venv = DummyVecEnv([lambda: Monitor(venv)])         # Envuelve el entorno en Monitor y lo vectoriza
+venv = VecTransposeImage(venv)                      # Ajusta el formato de imágenes para redes neuronales convolucionales
 
 # Crear la política experta basada en los waypoints
 expert = ExpertPolicy(waypoints, venv.envs[0])
@@ -94,6 +98,10 @@ transitions = rollout.generate_transitions(
     rng=rng
 )
 
+base_path = os.path.expanduser('~/models')
+os.makedirs(base_path, exist_ok=True)
+save_path = os.path.join(base_path, 'bc_deepracer_expert')
+
 # Inicializar un agente PPO (aunque se usará solo su arquitectura de red)
 policy = PPO('CnnPolicy', venv, verbose=1)
 
@@ -110,4 +118,4 @@ bc_trainer = bc.BC(
 bc_trainer.train(n_epochs=10)  # Número de épocas de entrenamiento (ajustable)
 
 # Guardar el modelo entrenado
-policy.save("bc_deepracer_expert")
+policy.save(save_path)
