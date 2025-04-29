@@ -274,7 +274,7 @@ class DeepRacerEnv(gym.Env):
         if(cos_angle < 0):
             print("DIRECCIÓN CONTRARIA")
             # return -(self.max_steps - self.steps), True
-            return -10000, True
+            return 0, True
 
         # Check if out of bounds
         distance_to_center = np.linalg.norm(robot_pos - nearest_waypoint)
@@ -282,7 +282,7 @@ class DeepRacerEnv(gym.Env):
         if distance_to_center > max_distance:
             print("FUERA DE PISTA")
             # return -(self.max_steps - self.steps), True
-            return -10000, True
+            return 0, True
 
         # Track completed waypoints and calculate progressive waypoint reward
         if self.prevWaypoint != nearest_index:

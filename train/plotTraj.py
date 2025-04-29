@@ -46,8 +46,8 @@ files = sorted(
 
 # Recorrer los archivos con un índice para manejar zorder
 print(len(files), "trajectories")
-# for i, filename in enumerate(files[-10:]):
-for i, filename in enumerate(files):
+for i, filename in enumerate(files[-10:]):
+# for i, filename in enumerate(files):
     # if i > 10:
     #     break # Mostras las X trayectorias primeras 
     filepath = os.path.join(trajectory_dir, filename)

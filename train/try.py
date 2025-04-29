@@ -81,6 +81,9 @@ def main():
 
     # base_path = os.path.expanduser('~/models')
     # save_path = os.path.join(base_path, 'deepracer_model.zip')
+
+    # base_path = os.path.expanduser('~/models')
+    # save_path = os.path.join(base_path, 'bc_deepracer_expert.zip')
     
     if not os.path.exists(save_path):
         print(f"No se encontró un modelo entrenado en {save_path}")
