@@ -176,7 +176,7 @@ class DeepRacerEnv(gym.Env):
             self.positions.append((self.model_position[0], self.model_position[1]))
         
         self.send_action(action[0], action[1])
-        time.sleep(0.025)
+        # time.sleep(0.025)
 
         # Calculamos la recompensa
         # s_time = time.time()
@@ -297,7 +297,7 @@ class DeepRacerEnv(gym.Env):
             self.stuck_steps = 0
         else:
             self.stuck_steps += 1
-            if(self.stuck_steps >= 100):    # Si no avanza tras 100 steps se comienza a penalizar mucho
+            if(self.stuck_steps >= 75):    # Si no avanza tras 75 steps se comienza a penalizar mucho
                 total_reward -= 10
 
         # Bonus for completing all waypoints (NO MAS REWARD POR PASAR META, REWARD POR AVANZAR) wp increment por reward
@@ -325,9 +325,9 @@ class DeepRacerEnv(gym.Env):
         
         # Combine rewards (without direction and speed components)
         total_reward = (
-            center_reward * 0.5 +                       # Stay centered on track (increased weight)
+            center_reward * 10 +                       # Stay centered on track (increased weight)
             proximity_reward * self.weightProx +        # Chase the carrot (target waypoint)
-            cos_angle
+            cos_angle * 10
         )
 
         # print("Center reward:", center_reward)
