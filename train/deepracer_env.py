@@ -55,7 +55,7 @@ class DeepRacerEnv(gym.Env):
         self.speed = 0
 
         # Pesos
-        self.weightProx = 2.5
+        self.weightProx = 25
         self.weightDir = 1
         self.weightSpeed = 0.6
 
@@ -168,9 +168,9 @@ class DeepRacerEnv(gym.Env):
         self.steps += 1
         # Termina el episodio después de max_steps o ha pasado por todos los waypoints (or self.numWaypoints >= len(self.waypoints))
         if(self.steps >= self.max_steps):
-            done = True
+            truncated = True
         else:
-            done = False
+            truncated = False
 
         if self.episode_count % self.frecTraj == 1:    # 1 de cada X (self.frecTraj)
             self.positions.append((self.model_position[0], self.model_position[1]))
@@ -180,7 +180,7 @@ class DeepRacerEnv(gym.Env):
 
         # Calculamos la recompensa
         # s_time = time.time()
-        reward, truncated = self.reward_func()
+        reward, done = self.reward_func()
         # f_time = time.time()
         # dif = f_time-s_time
         # self.times += dif
@@ -274,7 +274,7 @@ class DeepRacerEnv(gym.Env):
         if(cos_angle < 0):
             print("DIRECCIÓN CONTRARIA")
             # return -(self.max_steps - self.steps), True
-            return 0, True
+            return -1000, True
 
         # Check if out of bounds
         distance_to_center = np.linalg.norm(robot_pos - nearest_waypoint)
@@ -282,7 +282,7 @@ class DeepRacerEnv(gym.Env):
         if distance_to_center > max_distance:
             print("FUERA DE PISTA")
             # return -(self.max_steps - self.steps), True
-            return 0, True
+            return -1000, True
 
         # Track completed waypoints and calculate progressive waypoint reward
         if self.prevWaypoint != nearest_index:
@@ -327,7 +327,7 @@ class DeepRacerEnv(gym.Env):
         total_reward = (
             center_reward * 10 +                       # Stay centered on track (increased weight)
             proximity_reward * self.weightProx +        # Chase the carrot (target waypoint)
-            cos_angle * 10
+            cos_angle * 100
         )
 
         # print("Center reward:", center_reward)
