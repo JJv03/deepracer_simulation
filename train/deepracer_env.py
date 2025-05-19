@@ -19,7 +19,7 @@ class DeepRacerEnv(gym.Env):
     def __init__(self, waypoints, thickness, long):
         super(DeepRacerEnv, self).__init__()
         self.steps = 0
-        self.max_steps = 10000
+        self.max_steps = 25000
         self.stuck_steps = 0
         
         self.episode_count = 0  # Contador de episodios
@@ -169,6 +169,7 @@ class DeepRacerEnv(gym.Env):
         # Termina el episodio después de max_steps o ha pasado por todos los waypoints (or self.numWaypoints >= len(self.waypoints))
         if(self.steps >= self.max_steps):
             truncated = True
+            print("Truncated!!!!!")
         else:
             truncated = False
 
@@ -273,16 +274,16 @@ class DeepRacerEnv(gym.Env):
 
         if(cos_angle < 0):
             print("DIRECCIÓN CONTRARIA")
-            # return -(self.max_steps - self.steps), True
-            return -1000, True
+            return -(self.max_steps - self.steps), True
+            # return -1000, True
 
         # Check if out of bounds
         distance_to_center = np.linalg.norm(robot_pos - nearest_waypoint)
         max_distance = self.thickness / 2
         if distance_to_center > max_distance:
             print("FUERA DE PISTA")
-            # return -(self.max_steps - self.steps), True
-            return -1000, True
+            return -(self.max_steps - self.steps), True
+            # return -1000, True
 
         # Track completed waypoints and calculate progressive waypoint reward
         if self.prevWaypoint != nearest_index:
@@ -297,8 +298,10 @@ class DeepRacerEnv(gym.Env):
             self.stuck_steps = 0
         else:
             self.stuck_steps += 1
-            if(self.stuck_steps >= 75):    # Si no avanza tras 75 steps se comienza a penalizar mucho
-                total_reward -= 10
+            if(self.stuck_steps >= 150):    # Si no avanza tras 150 steps se comienza a penalizar mucho
+                print("MUCHO TIEMPO QUIETO")
+                return -(self.max_steps - self.steps), True
+                # return -1000, True
 
         # Bonus for completing all waypoints (NO MAS REWARD POR PASAR META, REWARD POR AVANZAR) wp increment por reward
         if self.numWaypoints >= len(self.waypoints):
