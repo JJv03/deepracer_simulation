@@ -120,14 +120,11 @@ def main():
     env = DummyVecEnv([lambda: Monitor(env)])   # Envuelve el entorno en Monitor y lo vectoriza
     env = VecTransposeImage(env)                # Ajusta el formato de imágenes para redes neuronales convolucionales
 
-
     # Configurar rutas
     base_path = os.path.expanduser('~/models')
     logs_path = os.path.join(base_path, 'deepracer_logs')
     save_path = os.path.join(base_path, 'deepracer_model')
     eval_path = os.path.join(base_path, 'deepracer_eval')
-    # model_path = os.path.join(base_path, 'bc_deepracer_expert.zip')
-    model_path = os.path.join(base_path, 'base_model.zip')
 
     os.makedirs(base_path, exist_ok=True)
     os.makedirs(logs_path, exist_ok=True)
@@ -140,13 +137,18 @@ def main():
         device="cuda"
     )
 
-    if os.path.exists(model_path):
-        print(f"Cargando pesos del modelo preentrenado desde {model_path}...")
-        pretrained_model = PPO.load(model_path, device="cuda", weights_only=True)
-        model.policy.load_state_dict(pretrained_model.policy.state_dict())
-        print("Pesos cargados exitosamente.")
-    else:
-        print("No se encontró modelo preentrenado, entrenando desde cero.")
+    trainFromScratch = True
+
+    if(not trainFromScratch):
+        # model_path = os.path.join(base_path, 'bc_deepracer_expert.zip')
+        model_path = os.path.join(base_path, 'base_model.zip')
+        if os.path.exists(model_path):
+            print(f"Cargando pesos del modelo preentrenado desde {model_path}...")
+            pretrained_model = PPO.load(model_path, device="cuda", weights_only=True)
+            model.policy.load_state_dict(pretrained_model.policy.state_dict())
+            print("Pesos cargados exitosamente.")
+        else:
+            print("No se encontró modelo preentrenado, entrenando desde cero.")
 
     # Callbacks para evaluar y guardar el modelo
     checkpoint_callback = CheckpointCallback(save_freq=5000, save_path=save_path, name_prefix="deepracer_checkpoint")

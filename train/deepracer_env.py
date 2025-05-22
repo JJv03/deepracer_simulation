@@ -19,7 +19,7 @@ class DeepRacerEnv(gym.Env):
     def __init__(self, waypoints, thickness, long):
         super(DeepRacerEnv, self).__init__()
         self.steps = 0
-        self.max_steps = 25000
+        self.max_steps = 35000
         self.stuck_steps = 0
         
         self.episode_count = 0  # Contador de episodios
@@ -55,9 +55,9 @@ class DeepRacerEnv(gym.Env):
         self.speed = 0
 
         # Pesos
-        self.weightProx = 25
-        self.weightDir = 1
-        self.weightSpeed = 0.6
+        self.weightCenter = 10
+        self.weightProx = 50
+        self.weightOrient = 10
 
         # Inicializar la posición inicial del robot
         self.initial_position = np.array([-0.5456519086166459, -3.060323716659117, -5.581931699989023e-06])  # x, y, z
@@ -274,7 +274,8 @@ class DeepRacerEnv(gym.Env):
 
         if(cos_angle < 0):
             print("DIRECCIÓN CONTRARIA")
-            return -(self.max_steps - self.steps), True
+            return 0, True
+            # return -(self.max_steps - self.steps), True
             # return -1000, True
 
         # Check if out of bounds
@@ -282,7 +283,8 @@ class DeepRacerEnv(gym.Env):
         max_distance = self.thickness / 2
         if distance_to_center > max_distance:
             print("FUERA DE PISTA")
-            return -(self.max_steps - self.steps), True
+            return 0, True
+            # return -(self.max_steps - self.steps), True
             # return -1000, True
 
         # Track completed waypoints and calculate progressive waypoint reward
@@ -298,9 +300,10 @@ class DeepRacerEnv(gym.Env):
             self.stuck_steps = 0
         else:
             self.stuck_steps += 1
-            if(self.stuck_steps >= 150):    # Si no avanza tras 150 steps se comienza a penalizar mucho
+            if(self.stuck_steps >= 350):    # Si no avanza tras 350 steps se penaliza
                 print("MUCHO TIEMPO QUIETO")
-                return -(self.max_steps - self.steps), True
+                return 0, True
+                # return -(self.max_steps - self.steps), True
                 # return -1000, True
 
         # Bonus for completing all waypoints (NO MAS REWARD POR PASAR META, REWARD POR AVANZAR) wp increment por reward
@@ -323,18 +326,20 @@ class DeepRacerEnv(gym.Env):
 
         # Hyperbolic reward function that increases as car gets closer to target
         proximity_reward = distanceToNextPrev - distanceToNext
+        proximity_reward = np.clip(proximity_reward, 0, 1)
         # print("Prev:", distanceToNextPrev)
         # print("Actual:", distanceToNext)
         
         # Combine rewards (without direction and speed components)
         total_reward = (
-            center_reward * 10 +                       # Stay centered on track (increased weight)
+            center_reward * self.weightCenter +         # Stay centered on track (increased weight)
             proximity_reward * self.weightProx +        # Chase the carrot (target waypoint)
-            cos_angle * 100
+            cos_angle * self.weightOrient               # Correct orientation
         )
 
-        # print("Center reward:", center_reward)
-        # print("Prox reward:", proximity_reward)
+        # print("Center reward:", center_reward * self.weightCenter)
+        # print("Prox reward:", proximity_reward * self.weightProx)
+        # print("Orientation reward:", cos_angle * self.weightOrient)
         
         # if speed < 0.3:
         #    total_reward -= 5.0
@@ -345,7 +350,8 @@ class DeepRacerEnv(gym.Env):
 
         # print("Total reward:", total_reward)
 
-        return total_reward, False
+        # return total_reward, False
+        return proximity_reward * self.weightProx, False
 
     def close(self):
         rospy.signal_shutdown("Cierre del entorno DeepRacer.")
