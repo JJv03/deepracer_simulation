@@ -36,6 +36,8 @@ for float_array in root.iter('{http://www.collada.org/2005/11/COLLADASchema}floa
                 waypoints.append(center)
         break
 
+print(f"Waypoints extraídos: {len(waypoints)} puntos")
+
 # Crear la figura para graficar las trayectorias y los waypoints
 plt.figure(figsize=(10, 10))
 

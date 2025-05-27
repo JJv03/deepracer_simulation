@@ -12,6 +12,7 @@ import xml.etree.ElementTree as ET
 import torch
 import csv
 import numpy as np
+import random
 
 class CSVLoggingCallback(BaseCallback):
     def __init__(self, verbose=0):
@@ -106,6 +107,13 @@ def extract_waypoints(dae_file, step=1):
     return waypoints, distance, long
     
 def main():
+    seed = 10
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(seed)
+    
     print(torch.cuda.is_available())  # Debería imprimir True
     print(torch.cuda.device_count())  # Número de GPUs detectadas (al menos 1)
     print(torch.cuda.get_device_name(0))  # Nombre de la GPU
@@ -118,6 +126,7 @@ def main():
     # Crear el entorno y monitor
     env = DeepRacerEnv(waypoints, thickness, long)    # Crea el entorno de simulación DeepRacer
     env = DummyVecEnv([lambda: Monitor(env)])   # Envuelve el entorno en Monitor y lo vectoriza
+    env.seed(seed)
     env = VecTransposeImage(env)                # Ajusta el formato de imágenes para redes neuronales convolucionales
 
     # Configurar rutas
@@ -141,7 +150,7 @@ def main():
         learning_rate=1e-4, gamma=0.995, gae_lambda=0.92,
         n_steps=2048, batch_size=128, clip_range=0.2,
         ent_coef=0.01, vf_coef=0.5,
-        device="cuda"
+        device="cuda", seed=seed
     )
 
     trainFromScratch = True
@@ -171,7 +180,7 @@ def main():
     # Entrenar el modelo
     try:
         print("Comenzando el entrenamiento...")
-        # model.learn(total_timesteps=500000, callback=[checkpoint_callback, eval_callback, csv_callback])
+        # model.learn(total_timesteps=50000, callback=[checkpoint_callback, eval_callback, csv_callback])
         model.learn(total_timesteps=50000, callback=[checkpoint_callback, eval_callback, csv_callback])
         model.save(save_path)
         print(f"Modelo guardado exitosamente en {save_path}")
