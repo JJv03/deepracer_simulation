@@ -56,7 +56,7 @@ class DeepRacerEnv(gym.Env):
 
         # Pesos
         self.weightCenter = 1.5
-        self.weightProx = 2
+        self.weightProx = 2.5
         self.weightOrient = 1
 
         # Inicializar la posición inicial del robot
@@ -278,7 +278,7 @@ class DeepRacerEnv(gym.Env):
             print("DIRECCIÓN CONTRARIA")
             # return 0, True
             # return -(self.max_steps - self.steps), True
-            return -1.5, True
+            return -2.5, True
 
         # Check if out of bounds
         distance_to_center = np.linalg.norm(robot_pos - nearest_waypoint)
@@ -287,7 +287,7 @@ class DeepRacerEnv(gym.Env):
             print("FUERA DE PISTA")
             # return 0, True
             # return -(self.max_steps - self.steps), True
-            return -1.5, True
+            return -2.5, True
 
         # Calculate center reward (TANGENCIAL, ANTES HE HECO EL COSENO, PUES AHORA SENO)
         center_reward = 1.0 - (distance_to_center / max_distance)
@@ -309,7 +309,7 @@ class DeepRacerEnv(gym.Env):
                 print("MUCHO TIEMPO QUIETO")
                 # return 0, True
                 # return -(self.max_steps - self.steps), True
-                return -1.5, True
+                return -2.5, True
 
         # Bonus for completing all waypoints (NO MAS REWARD POR PASAR META, REWARD POR AVANZAR) wp increment por reward
         if self.numWaypoints >= len(self.waypoints):
@@ -327,7 +327,7 @@ class DeepRacerEnv(gym.Env):
         moved = np.linalg.norm(robot_pos - self.prevPos)
         # assume max possible moved ~ e.g. throttle*dt*max_speed ~ 5*0.025*? ~= 0.125
         max_step = 0.045
-        proximity_reward = min(moved / max_step, 1.0) * 2
+        proximity_reward = min(moved / max_step, 1.0)
 
         self.prevPos = robot_pos
 
@@ -341,8 +341,8 @@ class DeepRacerEnv(gym.Env):
         )
 
         # print("Center reward:", center_reward * self.weightCenter)
+        # print("Orientation reward:", orientation_reward * self.weightOrient)
         # print("Prox reward:", proximity_reward * self.weightProx)
-        # print("Orientation reward:", cos_angle * self.weightOrient)
         
         # if speed < 0.3:
         #    total_reward -= 5.0
@@ -353,8 +353,7 @@ class DeepRacerEnv(gym.Env):
 
         # print("Total reward:", total_reward)
 
-        # return total_reward, False
-        return proximity_reward, False
+        return total_reward, False
 
     def close(self):
         rospy.signal_shutdown("Cierre del entorno DeepRacer.")
