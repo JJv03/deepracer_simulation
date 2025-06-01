@@ -3,6 +3,8 @@
 import os
 import math
 import cv2
+import numpy as np
+import torch
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import DummyVecEnv, VecTransposeImage
 from stable_baselines3.common.monitor import Monitor
@@ -70,9 +72,57 @@ def extract_waypoints(dae_file, step=1):
     
     return waypoints, distance, long
 
+def visualizar_decision(obs, action, step, model, output_dir):
+    """Guarda una imagen visualizando la acción y algunos pesos de la red."""
+
+    # Convertir la imagen de channel-first a channel-last
+    img = obs[0].transpose(1, 2, 0).copy()
+    # img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+
+    # Escalar si es muy pequeña
+    if img.shape[0] < 200:
+        img = cv2.resize(img, (img.shape[1]*2, img.shape[0]*2))
+
+    altura, ancho, _ = img.shape
+    ancho_info = 150  # Ancho para la columna de texto
+
+    # Crear imagen en blanco para la columna de texto
+    info_panel = np.ones((altura, ancho_info, 3), dtype=np.uint8) * 30  # fondo oscuro
+    font_color = (0, 255, 0)
+    font_scale = 0.5
+    line_height = 16
+
+    # Escribir información de la acción
+    cv2.putText(info_panel, f"Step: {step}", (10, 25), cv2.FONT_HERSHEY_SIMPLEX, font_scale, font_color, 1)
+    cv2.putText(info_panel, f"Angulo: {action[0][0]:.3f}", (10, 25 + line_height), cv2.FONT_HERSHEY_SIMPLEX, font_scale, font_color, 1)
+    cv2.putText(info_panel, f"Velocidad: {action[0][1]:.3f}", (10, 25 + 2 * line_height), cv2.FONT_HERSHEY_SIMPLEX, font_scale, font_color, 1)
+
+    # Extraer pesos si es posible
+    if hasattr(model.policy, "mlp_extractor"):
+        try:
+            with torch.no_grad():
+                obs_tensor = torch.tensor(obs).float().to(model.device)
+                latent_pi, _ = model.policy.mlp_extractor(model.policy.features_extractor(obs_tensor))
+                weights = latent_pi.cpu().numpy().flatten()[:10]
+                for i, w in enumerate(weights):
+                    y = 25 + (3 + i) * line_height
+                    cv2.putText(info_panel, f"W{i}: {w:.2f}", (10, y), cv2.FONT_HERSHEY_SIMPLEX, font_scale, (0, 200, 255), 1)
+        except Exception as e:
+            print(f"No se pudieron extraer pesos: {e}")
+
+    # Concatenar imagen original con panel de información
+    img_out = np.hstack((img, info_panel))
+
+    # Guardar la imagen
+    os.makedirs(output_dir, exist_ok=True)
+    out_file = os.path.join(output_dir, f"step_{step:05d}.png")
+    cv2.imwrite(out_file, img_out)
+    print(f"Guardada imagen de análisis en: {out_file}")
+
 def main():
     dae_file = "/home/jvalle/robot_ws/src/deepracer_simulation/meshes/2022_april_open/2022_april_open.dae"
     step = 1
+    output_dir = os.path.expanduser('~/analisis')
     waypoints, thickness, long = extract_waypoints(dae_file, step)
 
     # Configurar rutas
@@ -100,13 +150,26 @@ def main():
     
     obs = env.reset()
     done = False
+    step_counter = 0
+
+    input("Presiona Enter para continuar...")
     while not done:
         action, _ = model.predict(obs, deterministic=True)
-        # action[:,1] = action[:,1]*5
-        print ("Ang:", action[:,0], "Vel:", action[:,1])
+        print("Ang:", action[:, 0], "Vel:", action[:, 1])
+        # action[:,0] = 0
+        # action[:,1] = 0
         obs, reward, done, info = env.step(action)
         print("Rew:", reward)
-    
+
+        # Mostrar la imagen que ve el robot
+        frame = obs[0].transpose(1, 2, 0)  # (C, H, W) -> (H, W, C)
+        cv2.imshow("Vista del Robot", frame)
+        cv2.waitKey(1)  # Muestra la imagen durante al menos 1 ms
+
+        step_counter += 1
+        if step_counter % 100 == 0:
+            visualizar_decision(obs, action, step_counter, model, output_dir)
+
     print("Ejecución finalizada.")
     env.close()
     cv2.destroyAllWindows()

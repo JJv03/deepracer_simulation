@@ -149,13 +149,13 @@ def main():
         "CnnPolicy", env, verbose=1, tensorboard_log=logs_path,
         learning_rate=1e-4, gamma=0.995, gae_lambda=0.92,
         n_steps=2048, batch_size=128, clip_range=0.2,
-        ent_coef=0.01, vf_coef=0.5,
-        device="cuda", seed=seed
+        ent_coef=0.01, vf_coef=0.5, seed=seed,
+        device="cuda"
     )
 
-    trainFromScratch = True
+    startFromModel = False
 
-    if(not trainFromScratch):
+    if(startFromModel):
         # model_path = os.path.join(base_path, 'bc_deepracer_expert.zip')
         model_path = os.path.join(base_path, 'base_model.zip')
         if os.path.exists(model_path):

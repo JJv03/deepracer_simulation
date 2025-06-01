@@ -115,7 +115,7 @@ bc_trainer = bc.BC(
 )
 
 # Entrenar el modelo para imitar al experto
-bc_trainer.train(n_epochs=10)  # Número de épocas de entrenamiento (ajustable)
+bc_trainer.train(n_epochs=100)  # Número de épocas de entrenamiento (ajustable)
 
 # Guardar el modelo entrenado
 policy.save(save_path)
