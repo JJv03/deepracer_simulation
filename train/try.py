@@ -116,11 +116,11 @@ def visualizar_decision(obs, action, step, model, output_dir, showFMapFilter):
 
     # Guardar la imagen
     os.makedirs(output_dir, exist_ok=True)
-    out_file = os.path.join(output_dir, f"step_{step:05d}.png")
+    out_file = os.path.join(output_dir, f"{step:05d}_step.png")
     cv2.imwrite(out_file, img_out)
     print(f"Guardada imagen de análisis en: {out_file}")
 
-    # === NUEVO: Visualizar feature maps y filtros ===
+    # === Visualizar feature maps y filtros de varias capas ===
     if showFMapFilter:
         try:
             policy = model.policy
@@ -128,53 +128,68 @@ def visualizar_decision(obs, action, step, model, output_dir, showFMapFilter):
 
             obs_tensor = torch.tensor(obs).float().to(policy.device)
 
-            # Hook para capturar la salida de la primera capa convolucional
-            feature_maps = []
+            # Lista de capas CNN de las que quieres capturar feature maps
+            layers_to_hook = [0, 2, 4]
 
-            def hook_fn(module, input, output):
-                feature_maps.append(output.detach().cpu())
+            feature_maps = [[] for _ in layers_to_hook]
+            hooks = []
 
-            # Registrar el hook en la primera capa CNN (ajusta si tu extractor es diferente)
-            hook = policy.features_extractor.cnn[0].register_forward_hook(hook_fn)
+            # Función generadora de hooks para capturar outputs y guardar con la capa correcta
+            def make_hook(i):
+                def hook_fn(module, input, output):
+                    feature_maps[i].append(output.detach().cpu())
+                return hook_fn
+
+            # Registrar hooks para cada capa indicada
+            for i, layer_idx in enumerate(layers_to_hook):
+                hook = policy.features_extractor.cnn[layer_idx].register_forward_hook(make_hook(i))
+                hooks.append(hook)
 
             with torch.no_grad():
                 _ = policy(obs_tensor)
 
-            hook.remove()
+            # Quitar hooks
+            for hook in hooks:
+                hook.remove()
 
-            fmap = feature_maps[0].squeeze(0)  # [num_filters, H, W]
-            n_filters = fmap.shape[0]
-            rows = int(n_filters ** 0.5)
-            cols = (n_filters + rows - 1) // rows
+            # Visualizar feature maps y filtros para cada capa
+            for i, layer_idx in enumerate(layers_to_hook):
+                fmap = feature_maps[i][0].squeeze(0)  # [num_filters, H, W]
+                n_filters = fmap.shape[0]
+                rows = int(n_filters ** 0.5)
+                cols = (n_filters + rows - 1) // rows
 
-            # Graficar feature maps
-            plt.figure(figsize=(12, 12))
-            for i in range(n_filters):
-                plt.subplot(rows, cols, i + 1)
-                plt.imshow(fmap[i], cmap='viridis')
-                plt.axis('off')
-            plt.suptitle("Feature map", fontsize=16)
-            plt.tight_layout()
-            plt.savefig(os.path.join(output_dir, f"feature_map_{step:05d}.png"))
-            plt.close()
+                # Feature maps
+                plt.figure(figsize=(12, 12))
+                for f in range(n_filters):
+                    plt.subplot(rows, cols, f + 1)
+                    plt.imshow(fmap[f], cmap='viridis')
+                    plt.axis('off')
+                    plt.title(f"Layer {layer_idx} - Filter {f}", fontsize=8)
+                plt.suptitle(f"Feature maps - Layer {layer_idx}", fontsize=16)
+                plt.tight_layout()
+                plt.savefig(os.path.join(output_dir, f"{step:05d}_feature_map_layer{layer_idx}.png"))
+                plt.close()
 
-            # Visualizar filtros (pesos de la primera capa)
-            filters = policy.features_extractor.cnn[0].weight.data.cpu()
-            filters = filters[:, 0, :, :]  # Primer canal si es imagen en escala de grises
+                # Filtros (pesos)
+                filters = policy.features_extractor.cnn[layer_idx].weight.data.cpu()
+                filters = filters[:, 0, :, :]  # Ajusta si tienes varias canales
 
-            plt.figure(figsize=(12, 12))
-            for i in range(filters.shape[0]):
-                plt.subplot(rows, cols, i + 1)
-                plt.imshow(filters[i], cmap='viridis')
-                plt.axis('off')
-            plt.suptitle("Filters", fontsize=16)
-            plt.tight_layout()
-            plt.savefig(os.path.join(output_dir, f"filters_{step:05d}.png"))
-            plt.close()
+                plt.figure(figsize=(12, 12))
+                for f in range(filters.shape[0]):
+                    plt.subplot(rows, cols, f + 1)
+                    plt.imshow(filters[f], cmap='viridis')
+                    plt.axis('off')
+                    plt.title(f"Layer {layer_idx} - Filter {f}", fontsize=8)
+                plt.suptitle(f"Filters - Layer {layer_idx}", fontsize=16)
+                plt.tight_layout()
+                plt.savefig(os.path.join(output_dir, f"{step:05d}_filters_layer{layer_idx}.png"))
+                plt.close()
 
-            print(f"Guardado feature map y filtros para step {step}")
+            print(f"Guardado feature maps y filtros para step {step}")
+
         except Exception as e:
-            print(f"No se pudo generar feature map: {e}")
+            print(f"No se pudo generar feature maps: {e}")
 
 def analizar_estructura_cnn(model):
     print("\nAnálisis de la red convolucional (CNN):\n")
@@ -222,7 +237,7 @@ def main():
     obs = env.reset()
     done = False
     step_counter = 0
-    showFMapFilter = False
+    showFMapFilter = True
 
     input("Presiona Enter para continuar...")
     while not done:
