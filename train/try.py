@@ -10,6 +10,7 @@ from stable_baselines3.common.vec_env import DummyVecEnv, VecTransposeImage
 from stable_baselines3.common.monitor import Monitor
 from deepracer_env import DeepRacerEnv
 import xml.etree.ElementTree as ET
+import matplotlib.pyplot as plt
 
 def calcular_distancia(punto1, punto2):
     return math.sqrt((punto2[0] - punto1[0])**2 + (punto2[1] - punto1[1])**2 + (punto2[2] - punto1[2])**2)
@@ -72,7 +73,7 @@ def extract_waypoints(dae_file, step=1):
     
     return waypoints, distance, long
 
-def visualizar_decision(obs, action, step, model, output_dir):
+def visualizar_decision(obs, action, step, model, output_dir, showFMapFilter):
     """Guarda una imagen visualizando la acción y algunos pesos de la red."""
 
     # Convertir la imagen de channel-first a channel-last
@@ -119,6 +120,75 @@ def visualizar_decision(obs, action, step, model, output_dir):
     cv2.imwrite(out_file, img_out)
     print(f"Guardada imagen de análisis en: {out_file}")
 
+    # === NUEVO: Visualizar feature maps y filtros ===
+    if showFMapFilter:
+        try:
+            policy = model.policy
+            policy.eval()
+
+            obs_tensor = torch.tensor(obs).float().to(policy.device)
+
+            # Hook para capturar la salida de la primera capa convolucional
+            feature_maps = []
+
+            def hook_fn(module, input, output):
+                feature_maps.append(output.detach().cpu())
+
+            # Registrar el hook en la primera capa CNN (ajusta si tu extractor es diferente)
+            hook = policy.features_extractor.cnn[0].register_forward_hook(hook_fn)
+
+            with torch.no_grad():
+                _ = policy(obs_tensor)
+
+            hook.remove()
+
+            fmap = feature_maps[0].squeeze(0)  # [num_filters, H, W]
+            n_filters = fmap.shape[0]
+            rows = int(n_filters ** 0.5)
+            cols = (n_filters + rows - 1) // rows
+
+            # Graficar feature maps
+            plt.figure(figsize=(12, 12))
+            for i in range(n_filters):
+                plt.subplot(rows, cols, i + 1)
+                plt.imshow(fmap[i], cmap='viridis')
+                plt.axis('off')
+            plt.suptitle("Feature map", fontsize=16)
+            plt.tight_layout()
+            plt.savefig(os.path.join(output_dir, f"feature_map_{step:05d}.png"))
+            plt.close()
+
+            # Visualizar filtros (pesos de la primera capa)
+            filters = policy.features_extractor.cnn[0].weight.data.cpu()
+            filters = filters[:, 0, :, :]  # Primer canal si es imagen en escala de grises
+
+            plt.figure(figsize=(12, 12))
+            for i in range(filters.shape[0]):
+                plt.subplot(rows, cols, i + 1)
+                plt.imshow(filters[i], cmap='viridis')
+                plt.axis('off')
+            plt.suptitle("Filters", fontsize=16)
+            plt.tight_layout()
+            plt.savefig(os.path.join(output_dir, f"filters_{step:05d}.png"))
+            plt.close()
+
+            print(f"Guardado feature map y filtros para step {step}")
+        except Exception as e:
+            print(f"No se pudo generar feature map: {e}")
+
+def analizar_estructura_cnn(model):
+    print("\nAnálisis de la red convolucional (CNN):\n")
+    cnn = model.policy.features_extractor.cnn
+    for i, layer in enumerate(cnn):
+        if isinstance(layer, torch.nn.Conv2d):
+            print(f"Capa {i}: Conv2D")
+            print(f"   - Filtros de salida: {layer.out_channels}")
+            print(f"   - Canales de entrada: {layer.in_channels}")
+            print(f"   - Tamaño del kernel: {layer.kernel_size}")
+            print(f"   - Stride: {layer.stride}")
+            print(f"   - Shape de los pesos: {layer.weight.data.shape}")
+            print()
+
 def main():
     dae_file = "/home/jvalle/robot_ws/src/deepracer_simulation/meshes/2022_april_open/2022_april_open.dae"
     step = 1
@@ -147,10 +217,12 @@ def main():
     # Cargar el modelo entrenado
     model = PPO.load(save_path)
     print("Modelo cargado exitosamente.")
+    analizar_estructura_cnn(model)
     
     obs = env.reset()
     done = False
     step_counter = 0
+    showFMapFilter = False
 
     input("Presiona Enter para continuar...")
     while not done:
@@ -168,7 +240,7 @@ def main():
 
         step_counter += 1
         if step_counter % 100 == 0:
-            visualizar_decision(obs, action, step_counter, model, output_dir)
+            visualizar_decision(obs, action, step_counter, model, output_dir, showFMapFilter)
 
     print("Ejecución finalizada.")
     env.close()
