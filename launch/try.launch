@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <launch>
   <arg name="world_name" default="2022_april_open"/>
-  <arg name="train_script" default="$(find deepracer_simulation)/train/train.py"/>
+  <arg name="train_script" default="$(find deepracer_simulation)/train/try.py"/>
   <arg name="gui" default="true"/> <!-- Flag para interfaz gráfica -->
 
   <!-- Launch the racetrack with car -->
