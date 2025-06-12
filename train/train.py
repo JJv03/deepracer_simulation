@@ -2,6 +2,7 @@
 
 import os
 import math
+import time
 import cv2
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import EvalCallback, CheckpointCallback, BaseCallback
@@ -23,21 +24,35 @@ class CSVLoggingCallback(BaseCallback):
         os.makedirs(log_dir, exist_ok=True)
         self.csv_file = os.path.join(log_dir, 'training_log.csv')
 
-        # Crear archivo y escribir encabezado si no existe
+        # Para medir FPS
+        self.last_time = time.time()
+        self.step_counter = 0
+
         if not os.path.exists(self.csv_file):
             with open(self.csv_file, mode='w', newline='') as file:
                 writer = csv.writer(file)
-                writer.writerow(["step", "action_wheel_angle", "action_speed", "reward"])
+                writer.writerow(["step", "action_wheel_angle", "action_speed", "reward", "fps"])
 
     def _on_step(self) -> bool:
-        step = self.num_timesteps  # Número de pasos de entrenamiento
+        current_time = time.time()
+        delta_time = current_time - self.last_time
+        fps = 1.0 / delta_time if delta_time > 0 else 0.0
+        self.last_time = current_time
+
+        step = self.num_timesteps
         actions = self.locals["actions"]
         rewards = self.locals["rewards"]
 
         with open(self.csv_file, mode='a', newline='') as file:
             writer = csv.writer(file)
             for i, (action, reward) in enumerate(zip(actions, rewards)):
-                writer.writerow([step, np.clip(action[0], -1.0, 1.0), np.clip(action[1], 0.0, 5.0), reward])
+                writer.writerow([
+                    step,
+                    np.clip(action[0], -1.0, 1.0),
+                    np.clip(action[1], 0.0, 5.0),
+                    reward,
+                    fps
+                ])
 
         return True
 

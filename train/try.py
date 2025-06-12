@@ -2,6 +2,7 @@
 
 import os
 import math
+import time
 import cv2
 import numpy as np
 import torch
@@ -15,10 +16,15 @@ import matplotlib.pyplot as plt
 def calcular_distancia(punto1, punto2):
     return math.sqrt((punto2[0] - punto1[0])**2 + (punto2[1] - punto1[1])**2 + (punto2[2] - punto1[2])**2)
 
-def extract_waypoints(dae_file, step=1):
+def extract_waypoints(dae_file, step=1, reverse=False):
     """
     Extrae waypoints desde un archivo .dae y los guarda en una lista.
     Calcula también la distancia entre la línea interior (il) y la exterior (ol).
+
+    Parámetros:
+    - dae_file: ruta al archivo .dae
+    - step: salto para tomar waypoints (por defecto 1)
+    - reverse: si es True, los waypoints se guardan en orden inverso
     """
     tree = ET.parse(dae_file)
     root = tree.getroot()
@@ -40,6 +46,9 @@ def extract_waypoints(dae_file, step=1):
                     ]
                     waypoints.append(center)
             break
+
+    if reverse:
+        waypoints = waypoints[::-1]
 
     # Extraer puntos 'ol-verts-array' y 'il-verts-array' para calcular el grosor de la pista
     ol_waypoint, il_waypoint = [], []
@@ -64,13 +73,13 @@ def extract_waypoints(dae_file, step=1):
         distance = 0.0
 
     print(f"Waypoints extraídos: {len(waypoints)} puntos")
-    
+
     long = 0.0
     for i in range(1, len(waypoints)):
         long += calcular_distancia(waypoints[i-1], waypoints[i])
-        
+
     print(f"Longitud de la pista: {long} m")
-    
+
     return waypoints, distance, long
 
 def visualizar_decision(obs, action, step, model, output_dir, showFMapFilter):
@@ -206,6 +215,8 @@ def analizar_estructura_cnn(model):
 
 def main():
     dae_file = "/home/jvalle/robot_ws/src/deepracer_simulation/meshes/2022_april_open/2022_april_open.dae"
+    # dae_file = "/home/jvalle/robot_ws/src/deepracer_simulation/meshes/2022_march_open/2022_march_open.dae"
+    # dae_file = "/home/jvalle/robot_ws/src/deepracer_simulation/meshes/2022_october_open/2022_october_open.dae"
     step = 1
     output_dir = os.path.expanduser('~/analisis')
     waypoints, thickness, long = extract_waypoints(dae_file, step)
@@ -213,6 +224,7 @@ def main():
     # Configurar rutas
     base_path = os.path.expanduser('~/models/deepracer_eval')
     save_path = os.path.join(base_path, 'best_model.zip')
+    # save_path = os.path.join(base_path, 'all.zip')
 
     # base_path = os.path.expanduser('~/models')
     # save_path = os.path.join(base_path, 'deepracer_model.zip')
@@ -237,10 +249,17 @@ def main():
     obs = env.reset()
     done = False
     step_counter = 0
+    genImages = False
     showFMapFilter = True
 
+    # === Inicializa acumuladores ===
+    finished = False
+    distancia_total = 0.0
+    velocidad_total = 0.0
+    tiempo_inicio = time.time()
+
     input("Presiona Enter para continuar...")
-    while not done:
+    while not done and not finished:
         action, _ = model.predict(obs, deterministic=True)
         print("Ang:", action[:, 0], "Vel:", action[:, 1])
         # action[:,0] = 0
@@ -253,11 +272,38 @@ def main():
         cv2.imshow("Vista del Robot", frame)
         cv2.waitKey(1)  # Muestra la imagen durante al menos 1 ms
 
+        # === Acumuladores para métricas ===
+        if 'distance_from_center' in info[0]:
+            distancia_total += abs(info[0]['distance_from_center'])  # en metros
+
+        if 'speed' in info[0]:
+            velocidad_total += info[0]['speed']  # en m/s
+
         step_counter += 1
-        if step_counter % 100 == 0:
+        if step_counter % 100 == 0 and genImages:
             visualizar_decision(obs, action, step_counter, model, output_dir, showFMapFilter)
 
+        if 'finished' in info[0]:
+            finished = info[0]['finished']
+            if finished: env.reset()
+
     print("Ejecución finalizada.")
+
+    tiempo_fin = time.time()
+    duracion_total = tiempo_fin - tiempo_inicio
+
+    # === Cálculos finales ===
+    distancia_media = distancia_total / step_counter if step_counter else 0
+    velocidad_media = velocidad_total / step_counter if step_counter else 0
+    tiempo_medio_vuelta = duracion_total  # Solo una vuelta en este caso
+
+    # === Reporte final ===
+    print("\n--- Resultados de la vuelta ---")
+    print(f"Distancia media al centro de la pista (m): {distancia_media:.3f}")
+    print(f"Anchura de la pista (m): {thickness:.3f}")
+    print(f"Velocidad media (m/s): {velocidad_media:.3f}")
+    print(f"Tiempo total de vuelta (s): {tiempo_medio_vuelta:.2f}")
+
     env.close()
     cv2.destroyAllWindows()
 
