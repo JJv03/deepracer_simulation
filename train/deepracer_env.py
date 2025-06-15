@@ -364,13 +364,9 @@ class DeepRacerEnv(gym.Env):
         # Hyperbolic reward function that increases as car gets closer to target
         
         # Combine rewards
-        # total_reward += (
-        #     center_reward * self.weightCenter +         # Stay centered on track (increased weight)
-        #     orientation_reward  * self.weightOrient +   # Correct orientation
-        #     proximity_reward * self.weightProx          # Chase the carrot (target waypoint)
-        # )
-
         total_reward += (
+            center_reward * self.weightCenter +         # Stay centered on track (increased weight)
+            orientation_reward  * self.weightOrient +   # Correct orientation
             proximity_reward * self.weightProx          # Chase the carrot (target waypoint)
         )
 
