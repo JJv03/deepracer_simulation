@@ -35,5 +35,13 @@
     <pose>0 0 0 0 0 0</pose>
     <name>racetrack</name>
   </include>
+  <!-- Configuración de la cámara del usuario -->
+  <gui>
+    <camera name="gzclient_camera">
+      <near>0.10</near>
+      <far>5000.00</far>
+      <pose>10.831276 -10.379164 6.539956 0.00 0.491643 2.312192</pose>
+    </camera>
+  </gui>
 </world>
 </sdf>
