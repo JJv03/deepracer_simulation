@@ -64,13 +64,25 @@ class DeepRacerEnv(gym.Env):
         self.initial_position = np.array([-0.5456519086166459, -3.060323716659117, -5.581931699989023e-06])  # x, y, z
         self.initial_orientation = np.array([6.1710519125244906e-06, 2.4181460708256078e-05, -0.2583623974492632, 0.9660480686598593])  # x, y, z, w (cuaternión)
         
-        # # 2022_march_open
+        # 2022_april_open (inverted)
+        # self.initial_position = np.array([0.5471275166451038, -3.6455813678084095, -5.5818628388291935e-06])  # x, y, z
+        # self.initial_orientation = np.array([2.382525367063531e-05, -6.051481633766404e-06, -0.9663201208813529, -0.25734300724050124])  # x, y, z, w (cuaternión)
+
+        # 2022_march_open
         # self.initial_position = np.array([-2.420205192825567, -5.890540009863859, -5.5816330473898446e-06])  # x, y, z
         # self.initial_orientation = np.array([9.656864625590377e-07, 2.408897970749712e-05, -0.05182135821301352, 0.9986563704556974])  # x, y, z, w (cuaternión)
 
-        # # 2022_october_open
+        # 2022_march_open (inverted)
+        # self.initial_position = np.array([-1.4318160937300424, -6.037799260595074, -5.5815511631404635e-06])  # x, y, z
+        # self.initial_orientation = np.array([-2.4359577249764195e-05, 1.45578542981161e-06, 0.9974569113400333, 0.07127208025933052])  # x, y, z, w (cuaternión)
+
+        # 2022_october_open
         # self.initial_position = np.array([-7.2446175262211625, 0.10878144792701322, -5.581859656579591e-06])  # x, y, z
         # self.initial_orientation = np.array([-2.3643483069762326e-05, 6.498914978101002e-06, 0.9611015296859916, 0.2761953095800088])  # x, y, z, w (cuaternión)
+
+        # 2022_october_open (inverted)
+        # self.initial_position = np.array([-8.019213060620286, 0.6522508595406609, -5.581753955822416e-06])  # x, y, z
+        # self.initial_orientation = np.array([-7.761243822560997e-06, -2.3086331160858944e-05, 0.32955458539595717, -0.9441365233117948])  # x, y, z, w (cuaternión)
 
         self.prevPos = [0, 0]
         self.prevPos[0] = self.initial_position[0]
@@ -359,8 +371,6 @@ class DeepRacerEnv(gym.Env):
         # )
 
         total_reward += (
-            center_reward * self.weightCenter +         # Stay centered on track (increased weight)
-            orientation_reward  * self.weightOrient +   # Correct orientation
             proximity_reward * self.weightProx          # Chase the carrot (target waypoint)
         )
 
