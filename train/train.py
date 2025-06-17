@@ -63,7 +63,7 @@ class CSVLoggingCallback(BaseCallback):
 def calcular_distancia(punto1, punto2):
     return math.sqrt((punto2[0] - punto1[0])**2 + (punto2[1] - punto1[1])**2 + (punto2[2] - punto1[2])**2)
 
-def extract_waypoints(dae_file, step=1):
+def extract_waypoints(dae_file, step=1, reverse=False):
     """
     Extrae waypoints desde un archivo .dae y los guarda en una lista.
     Calcula también la distancia entre la línea interior (il) y la exterior (ol).
@@ -88,6 +88,9 @@ def extract_waypoints(dae_file, step=1):
                     ]
                     waypoints.append(center)
             break
+
+    if reverse:
+        waypoints = waypoints[::-1]
 
     # Extraer puntos 'ol-verts-array' y 'il-verts-array' para calcular el grosor de la pista
     ol_waypoint, il_waypoint = [], []
@@ -135,6 +138,7 @@ def main():
 
     # Configuración de los waypoints
     dae_file = "/home/jvalle/robot_ws/src/deepracer_simulation/meshes/2022_april_open/2022_april_open.dae"
+    # dae_file = "/home/jvalle/robot_ws/src/deepracer_simulation/meshes/2022_october_open/2022_october_open.dae"
     step = 1
     waypoints, thickness, long = extract_waypoints(dae_file, step)
 
@@ -171,8 +175,10 @@ def main():
     startFromModel = False
 
     if(startFromModel):
-        # model_path = os.path.join(base_path, 'bc_deepracer_expert.zip')
-        model_path = os.path.join(base_path, 'base_model.zip')
+        baseModel_path = os.path.expanduser('~/baseModels')
+        # model_path = os.path.join(baseModel_path, 'bc_deepracer_expert.zip')
+        # model_path = os.path.join(baseModel_path, 'base_model.zip')
+        model_path = os.path.join(baseModel_path, 'best_model.zip')
         if os.path.exists(model_path):
             print(f"Cargando pesos del modelo preentrenado desde {model_path}...")
             pretrained_model = PPO.load(model_path, device="cuda", weights_only=True)
@@ -182,9 +188,9 @@ def main():
             print("No se encontró modelo preentrenado, entrenando desde cero.")
 
     # Callbacks para evaluar y guardar el modelo
-    # checkpoint_callback = CheckpointCallback(save_freq=50000, save_path=save_path, name_prefix="deepracer_checkpoint")
+    # checkpoint_callback = CheckpointCallback(save_freq=5000, save_path=save_path, name_prefix="deepracer_checkpoint")
     
-    # eval_callback = EvalCallback(env, best_model_save_path=eval_path, log_path=eval_path, eval_freq=10000, deterministic=True, render=False)
+    # eval_callback = EvalCallback(env, best_model_save_path=eval_path, log_path=eval_path, eval_freq=5000, deterministic=True, render=False)
 
     checkpoint_callback = CheckpointCallback(save_freq=5000, save_path=save_path, name_prefix="deepracer_checkpoint")
     

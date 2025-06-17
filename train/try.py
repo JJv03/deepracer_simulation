@@ -82,7 +82,7 @@ def extract_waypoints(dae_file, step=1, reverse=False):
 
     return waypoints, distance, long
 
-def visualizar_decision(obs, action, step, model, output_dir, showFMapFilter):
+def visualizar_decision(obs, action, step, reward, model, output_dir, showFMapFilter):
     """Guarda una imagen visualizando la acción y algunos pesos de la red."""
 
     # Convertir la imagen de channel-first a channel-last
@@ -99,6 +99,7 @@ def visualizar_decision(obs, action, step, model, output_dir, showFMapFilter):
     # Crear imagen en blanco para la columna de texto
     info_panel = np.ones((altura, ancho_info, 3), dtype=np.uint8) * 30  # fondo oscuro
     font_color = (0, 255, 0)
+    rew_color = (0, 165, 255)
     font_scale = 0.5
     line_height = 16
 
@@ -106,7 +107,8 @@ def visualizar_decision(obs, action, step, model, output_dir, showFMapFilter):
     cv2.putText(info_panel, f"Step: {step}", (10, 25), cv2.FONT_HERSHEY_SIMPLEX, font_scale, font_color, 1)
     cv2.putText(info_panel, f"Angulo: {action[0][0]:.3f}", (10, 25 + line_height), cv2.FONT_HERSHEY_SIMPLEX, font_scale, font_color, 1)
     cv2.putText(info_panel, f"Velocidad: {action[0][1]:.3f}", (10, 25 + 2 * line_height), cv2.FONT_HERSHEY_SIMPLEX, font_scale, font_color, 1)
-
+    cv2.putText(info_panel, f"Reward: {float(reward):.3f}", (10, 25 + 3 * line_height), cv2.FONT_HERSHEY_SIMPLEX, font_scale, rew_color, 1)
+    
     # Extraer pesos si es posible
     if hasattr(model.policy, "mlp_extractor"):
         try:
@@ -115,7 +117,7 @@ def visualizar_decision(obs, action, step, model, output_dir, showFMapFilter):
                 latent_pi, _ = model.policy.mlp_extractor(model.policy.features_extractor(obs_tensor))
                 weights = latent_pi.cpu().numpy().flatten()[:10]
                 for i, w in enumerate(weights):
-                    y = 25 + (3 + i) * line_height
+                    y = 42 + (3 + i) * line_height
                     cv2.putText(info_panel, f"W{i}: {w:.2f}", (10, y), cv2.FONT_HERSHEY_SIMPLEX, font_scale, (0, 200, 255), 1)
         except Exception as e:
             print(f"No se pudieron extraer pesos: {e}")
@@ -223,8 +225,8 @@ def main():
 
     # Configurar rutas
     base_path = os.path.expanduser('~/models/deepracer_eval')
-    save_path = os.path.join(base_path, 'best_model.zip')
-    # save_path = os.path.join(base_path, 'all.zip')
+    # save_path = os.path.join(base_path, 'best_model.zip')
+    save_path = os.path.join(base_path, 'all.zip')
 
     # base_path = os.path.expanduser('~/models')
     # save_path = os.path.join(base_path, 'deepracer_model.zip')
@@ -249,8 +251,8 @@ def main():
     obs = env.reset()
     done = False
     step_counter = 0
-    genImages = False
-    showFMapFilter = True
+    genImages = True
+    showFMapFilter = False
 
     # === Inicializa acumuladores ===
     finished = False
@@ -281,7 +283,7 @@ def main():
 
         step_counter += 1
         if step_counter % 100 == 0 and genImages:
-            visualizar_decision(obs, action, step_counter, model, output_dir, showFMapFilter)
+            visualizar_decision(obs, action, step_counter, reward, model, output_dir, showFMapFilter)
 
         if 'finished' in info[0]:
             finished = info[0]['finished']

@@ -63,19 +63,19 @@ for i, filename in enumerate(files):
     if df["x"].dtype in ['float64', 'int64'] and df["y"].dtype in ['float64', 'int64']:
         # Asignar un zorder mayor a trayectorias más recientes
 
-        # plt.plot(df["x"].values, df["y"].values, label=filename, zorder=len(files) - i)
+        plt.plot(df["x"].values, df["y"].values, label=filename, zorder=len(files) - i)
 
         # FLECHAS DE DIRECCIÓN
-        x_vals = df["x"].values
-        y_vals = df["y"].values
-        plt.plot(x_vals, y_vals, label=filename, zorder=len(files) - i, color = 'green')
+        # x_vals = df["x"].values
+        # y_vals = df["y"].values
+        # plt.plot(x_vals, y_vals, label=filename, zorder=len(files) - i, color = 'green')
 
-        # Dibujar flechas para indicar dirección
-        for j in range(0, len(x_vals)-1, max(1, len(x_vals)//20)):  # Ajusta el paso para no sobrecargar de flechas
-            dx = x_vals[j+1] - x_vals[j]
-            dy = y_vals[j+1] - y_vals[j]
-            plt.arrow(x_vals[j], y_vals[j], dx, dy, shape='full', lw=0,
-                    length_includes_head=True, head_width=0.25, color='green', alpha=0.6)
+        # # Dibujar flechas para indicar dirección
+        # for j in range(0, len(x_vals)-1, max(1, len(x_vals)//20)):  # Ajusta el paso para no sobrecargar de flechas
+        #     dx = x_vals[j+1] - x_vals[j]
+        #     dy = y_vals[j+1] - y_vals[j]
+        #     plt.arrow(x_vals[j], y_vals[j], dx, dy, shape='full', lw=0,
+        #             length_includes_head=True, head_width=0.25, color='green', alpha=0.6)
         #####
 
     else:
