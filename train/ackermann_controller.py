@@ -7,6 +7,65 @@ import sys
 from train import extract_waypoints
 import numpy as np
 from scipy.spatial import KDTree
+import os
+import cv2
+import torch
+import matplotlib.pyplot as plt
+from sensor_msgs.msg import Image as sensor_image
+from cv_bridge import CvBridge, CvBridgeError
+
+def visualizar_decision(obs, action, step, reward, output_dir):
+    """Guarda una imagen visualizando la acción y algunos pesos de la red."""
+
+    # Verifica las dimensiones del input
+    if isinstance(obs, np.ndarray):
+        img_data = obs
+    else:
+        img_data = np.array(obs)
+
+    if len(img_data.shape) == 4:
+        # Batch of images, pick the first
+        img = img_data[0].transpose(1, 2, 0).copy()
+    elif len(img_data.shape) == 3:
+        # Single image, possibly already channel-last
+        if img_data.shape[0] <= 3:  # Channels-first
+            img = img_data.transpose(1, 2, 0).copy()
+        else:
+            img = img_data.copy()  # Assume it's already HWC
+    elif len(img_data.shape) == 2:
+        # Grayscale image, convert to 3-channel
+        img = cv2.cvtColor(img_data, cv2.COLOR_GRAY2BGR)
+    else:
+        raise ValueError(f"Formato de imagen inesperado: shape={img_data.shape}")
+
+    # Escalar si es muy pequeña
+    if img.shape[0] < 200:
+        img = cv2.resize(img, (img.shape[1]*2, img.shape[0]*2))
+
+    altura, ancho, _ = img.shape
+    ancho_info = 150  # Ancho para la columna de texto
+
+    # Crear imagen en blanco para la columna de texto
+    info_panel = np.ones((altura, ancho_info, 3), dtype=np.uint8) * 30  # fondo oscuro
+    font_color = (0, 255, 0)
+    rew_color = (0, 165, 255)
+    font_scale = 0.5
+    line_height = 16
+
+    # Escribir información de la acción
+    cv2.putText(info_panel, f"Step: {step}", (10, 25), cv2.FONT_HERSHEY_SIMPLEX, font_scale, font_color, 1)
+    cv2.putText(info_panel, f"Angulo: {action[0][0]:.3f}", (10, 25 + line_height), cv2.FONT_HERSHEY_SIMPLEX, font_scale, font_color, 1)
+    cv2.putText(info_panel, f"Velocidad: {action[0][1]:.3f}", (10, 25 + 2 * line_height), cv2.FONT_HERSHEY_SIMPLEX, font_scale, font_color, 1)
+    cv2.putText(info_panel, f"Reward: {float(reward):.3f}", (10, 25 + 3 * line_height), cv2.FONT_HERSHEY_SIMPLEX, font_scale, rew_color, 1)
+
+    # Concatenar imagen original con panel de información
+    img_out = np.hstack((img, info_panel))
+
+    # Guardar la imagen
+    os.makedirs(output_dir, exist_ok=True)
+    out_file = os.path.join(output_dir, f"{step:05d}_step.png")
+    cv2.imwrite(out_file, img_out)
+    print(f"Guardada imagen de análisis en: {out_file}")
 
 class AckermannGUI(QtWidgets.QWidget):
     def __init__(self):
@@ -16,6 +75,12 @@ class AckermannGUI(QtWidgets.QWidget):
         rospy.init_node('ackermann_controller_gui', anonymous=True)
 
         self.setWindowTitle("Ackermann Controller")
+
+        self.bridge = CvBridge()
+        self.latest_img = None
+        rospy.Subscriber('/camera/zed/rgb/image_rect_color', sensor_image, self.callback_image)
+        self.image = np.zeros((120, 160, 3), dtype=np.uint8)
+        self.output_dir = os.path.expanduser('~/analisis')
 
         # Velocidad y Ángulo iniciales
         self.speed = 0.0
@@ -67,6 +132,10 @@ class AckermannGUI(QtWidgets.QWidget):
 
         # Suscripción a la posición del modelo en Gazebo
         self.sub = rospy.Subscriber('/gazebo/model_states', ModelStates, self.model_state_callback)
+
+    def callback_image(self, data):
+        bridge = CvBridge()
+        self.image = cv2.resize(bridge.imgmsg_to_cv2(data, desired_encoding='bgr8'), (160, 120))
 
     def model_state_callback(self, msg):
         # Obtener la posición del vehículo en la simulación
@@ -128,8 +197,13 @@ class AckermannGUI(QtWidgets.QWidget):
         self.pub.publish(msg)
 
         self.steps += 1
-        reward, done = self.reward_func()
+        reward, done, _, _, _ = self.reward_func()
         print(f"Step: {self.steps} | Reward: {reward:.3f} | Done: {done}")
+
+        action = [[self.steering, self.speed]]
+        visualizar_decision(
+            self.image, action, self.steps, reward, self.output_dir
+        )
 
     def reward_func(self):
         """
@@ -139,14 +213,13 @@ class AckermannGUI(QtWidgets.QWidget):
         3. Progressive waypoint completion
         """
         total_reward = 0
-        if len(self.waypoints) < 2:
-            return -1, True  # Not enough waypoints to calculate direction
-        
         speed = self.speed
+        if len(self.waypoints) < 2:
+            return -1, True, 0.0, speed, False  # Not enough waypoints to calculate direction
+        
         if speed < 0:
             print("VELOCIDAD")
-            return -1000, True  # Negative speed (reverse) is incorrect behavior
-
+            return -1000, True, 0.0, speed, False  # Negative speed (reverse) is incorrect behavior
 
         # Get current robot position
         robot_pos = self.model_position[:2]  # Only use x, y coordinates
@@ -170,36 +243,24 @@ class AckermannGUI(QtWidgets.QWidget):
         car_vector = np.array([np.cos(theta), np.sin(theta)])
         
         # print("Direccion robot:", car_vector)
-        
-        # Calcular el coseno del ángulo entre el vector de dirección y el vector de orientación del robot
-        cos_angle = np.dot(direction_vector_normalized, car_vector)
-
-        if(cos_angle < 0):
-            print("DIRECCIÓN CONTRARIA")
-            # return -(self.max_steps - self.steps), True
-            return -5, True
 
         # Check if out of bounds
         distance_to_center = np.linalg.norm(robot_pos - nearest_waypoint)
         max_distance = self.thickness / 2
         if distance_to_center > max_distance:
             print("FUERA DE PISTA")
+            # return 0, True
             # return -(self.max_steps - self.steps), True
-            return -10, True
+            return -2.5, True, distance_to_center, speed, False
+        
+        # Calcular el coseno del ángulo entre el vector de dirección y el vector de orientación del robot
+        orientation_reward  = np.dot(direction_vector_normalized, car_vector)
 
-        # Track completed waypoints and calculate progressive waypoint reward
-        if self.prevWaypoint != nearest_index:
-            diff = (nearest_index - self.prevWaypoint) %  len(self.waypoints)
-            waypoint_increment = diff
-            self.numWaypoints += waypoint_increment
-                
-            self.prevWaypoint = nearest_index
-
-        # Bonus for completing all waypoints (NO MAS REWARD POR PASAR META, REWARD POR AVANZAR) wp increment por reward
-        if self.numWaypoints >= len(self.waypoints):
-            total_reward += self.max_steps - self.steps
-            print("All waypoints completed, bonus reward:", self.max_steps - self.steps)
-            self.numWaypoints = 0
+        if(orientation_reward  < 0.3):
+            print("DIRECCIÓN CONTRARIA")
+            # return 0, True
+            # return -(self.max_steps - self.steps), True
+            return -2.5, True, distance_to_center, speed, False
 
         # Calculate center reward (TANGENCIAL, ANTES HE HECO EL COSENO, PUES AHORA SENO)
         center_reward = 1.0 - (distance_to_center / max_distance)
@@ -208,36 +269,40 @@ class AckermannGUI(QtWidgets.QWidget):
         next_index = (nearest_index + self.distance) % len(self.waypoints)
         next_waypoint = self.waypoints[next_index]
         
-        distanceToNext = np.linalg.norm(robot_pos - next_waypoint)
-        distanceToNextPrev = np.linalg.norm(self.prevPos - next_waypoint)
-        
+        # proximity_reward = np.linalg.norm(robot_pos - self.prevPos)
+
+        robot_pos = np.array(robot_pos)
+        self.prevPos = np.array(self.prevPos)
+        moved = np.linalg.norm(robot_pos - self.prevPos)
+        # assume max possible moved ~ e.g. throttle*dt*max_speed ~ 5*0.025*? ~= 0.125
+        max_step = 0.045
+        proximity_reward = min(moved / max_step, 1.0)
+
         self.prevPos = robot_pos
 
         # Hyperbolic reward function that increases as car gets closer to target
-        proximity_reward = distanceToNextPrev - distanceToNext
-        # print("Prev:", distanceToNextPrev)
-        # print("Actual:", distanceToNext)
         
-        # Combine rewards (without direction and speed components)
-        total_reward = (
-            center_reward * 0.5 +                  # Stay centered on track (increased weight)
-            proximity_reward * self.weightProx +     # Chase the carrot (target waypoint)
-            cos_angle
+        # Combine rewards
+        total_reward += (
+            center_reward * 1 +         # Stay centered on track (increased weight)
+            orientation_reward  * 1 +   # Correct orientation
+            proximity_reward * 2          # Chase the carrot (target waypoint)
         )
 
-        # print("Center reward:", center_reward)
-        # print("Prox reward:", proximity_reward)
+        # print("Center reward:", center_reward * self.weightCenter)
+        # print("Orientation reward:", orientation_reward * self.weightOrient)
+        # print("Prox reward:", proximity_reward * self.weightProx)
         
-        if speed < 0.3:
-           total_reward -= 5.0
-        elif speed < 1:
-            total_reward -= 1.0 / speed
-        else:
-            total_reward += 1.0
+        # if speed < 0.3:
+        #    total_reward -= 5.0
+        # elif speed < 1:
+        #     total_reward -= 1.0 / speed
+        # else:
+        #     total_reward += 1.0
 
         # print("Total reward:", total_reward)
 
-        return total_reward, False
+        return total_reward, False, distance_to_center, speed, False
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
