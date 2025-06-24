@@ -224,6 +224,7 @@ class DeepRacerEnv(gym.Env):
         info = {
             'distance_from_center': distance_to_center,
             'speed': speed,
+            'waypoints': self.numWaypoints,
             'finished': finished
         }
         
@@ -345,7 +346,7 @@ class DeepRacerEnv(gym.Env):
             # total_reward += self.max_steps - self.steps
             total_reward += 10
             print("All waypoints completed, bonus reward:", self.max_steps - self.steps)
-            self.numWaypoints = 0
+            # self.numWaypoints = 0
             finished = True
         
         # Proximity reward (carrot-on-stick approach)

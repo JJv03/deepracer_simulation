@@ -44,9 +44,14 @@ print(f"Waypoints extraídos: {len(waypoints)} puntos")
 plt.figure(figsize=(10, 10))
 
 # Obtener la lista de archivos y extraer el número de episodio
+# files = sorted(
+#     [f for f in os.listdir(trajectory_dir) if f.startswith("trajectory") and f.endswith(".csv")], 
+#     key=lambda x: int(re.search(r'ep(\d+)', x).group(1)))
+
 files = sorted(
-    [f for f in os.listdir(trajectory_dir) if f.startswith("trajectory") and f.endswith(".csv")], 
-    key=lambda x: int(re.search(r'ep(\d+)', x).group(1)))
+    [f for f in os.listdir(trajectory_dir) if re.match(r'^trajectory_.*\.csv$', f)],
+    key=lambda x: int(re.search(r'ep(\d+)', x).group(1)) if re.search(r'ep(\d+)', x) else -1
+)
 
 # Recorrer los archivos con un índice para manejar zorder
 print(len(files), "trajectories")

@@ -251,7 +251,7 @@ def main():
     obs = env.reset()
     done = False
     step_counter = 0
-    genImages = True
+    genImages = False
     showFMapFilter = False
 
     # === Inicializa acumuladores ===
@@ -298,6 +298,7 @@ def main():
     distancia_media = distancia_total / step_counter if step_counter else 0
     velocidad_media = velocidad_total / step_counter if step_counter else 0
     tiempo_medio_vuelta = duracion_total  # Solo una vuelta en este caso
+    porcentaje = (info[0]['waypoints'] / len(waypoints))*100
 
     # === Reporte final ===
     print("\n--- Resultados de la vuelta ---")
@@ -305,6 +306,7 @@ def main():
     print(f"Anchura de la pista (m): {thickness:.3f}")
     print(f"Velocidad media (m/s): {velocidad_media:.3f}")
     print(f"Tiempo total de vuelta (s): {tiempo_medio_vuelta:.2f}")
+    print(f"Porcentaje de completar vuelta (%): {porcentaje:.2f}")
 
     env.close()
     cv2.destroyAllWindows()
