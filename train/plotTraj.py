@@ -6,6 +6,7 @@ import re
 
 # Directorio donde están las trayectorias
 trajectory_dir = os.path.expanduser('~/trajectories')
+trajectory_dir = os.path.expanduser('~/baseModels/ablation')
 
 # Archivo DAE que contiene los waypoints
 dae_file = "/home/jvalle/robot_ws/src/deepracer_simulation/meshes/2022_april_open/2022_april_open.dae"
@@ -48,10 +49,12 @@ plt.figure(figsize=(10, 10))
 #     [f for f in os.listdir(trajectory_dir) if f.startswith("trajectory") and f.endswith(".csv")], 
 #     key=lambda x: int(re.search(r'ep(\d+)', x).group(1)))
 
-files = sorted(
-    [f for f in os.listdir(trajectory_dir) if re.match(r'^trajectory_.*\.csv$', f)],
-    key=lambda x: int(re.search(r'ep(\d+)', x).group(1)) if re.search(r'ep(\d+)', x) else -1
-)
+# files = sorted(
+#     [f for f in os.listdir(trajectory_dir) if re.match(r'^trajectory_.*\.csv$', f)],
+#     key=lambda x: int(re.search(r'ep(\d+)', x).group(1)) if re.search(r'ep(\d+)', x) else -1
+# )
+
+files = [f for f in os.listdir(trajectory_dir) if f.endswith('.csv')]
 
 # Recorrer los archivos con un índice para manejar zorder
 print(len(files), "trajectories")
@@ -68,19 +71,29 @@ for i, filename in enumerate(files):
     if df["x"].dtype in ['float64', 'int64'] and df["y"].dtype in ['float64', 'int64']:
         # Asignar un zorder mayor a trayectorias más recientes
 
-        plt.plot(df["x"].values, df["y"].values, label=filename, zorder=len(files) - i)
+        # plt.plot(df["x"].values, df["y"].values, label=filename, zorder=len(files) - i)
 
         # FLECHAS DE DIRECCIÓN
-        # x_vals = df["x"].values
-        # y_vals = df["y"].values
-        # plt.plot(x_vals, y_vals, label=filename, zorder=len(files) - i, color = 'green')
+        x_vals = df["x"].values
+        y_vals = df["y"].values
+        # Graficar línea y obtener el color asignado automáticamente
+        line, = plt.plot(x_vals, y_vals, label=filename, zorder=len(files) - i)
+        color = line.get_color()  # Obtener el color usado por la línea
 
-        # # Dibujar flechas para indicar dirección
-        # for j in range(0, len(x_vals)-1, max(1, len(x_vals)//20)):  # Ajusta el paso para no sobrecargar de flechas
-        #     dx = x_vals[j+1] - x_vals[j]
-        #     dy = y_vals[j+1] - y_vals[j]
-        #     plt.arrow(x_vals[j], y_vals[j], dx, dy, shape='full', lw=0,
-        #             length_includes_head=True, head_width=0.25, color='green', alpha=0.6)
+        # Determinar el número de flechas (más puntos → más flechas)
+        n_points = len(x_vals)
+        n_arrows = min(50, max(5, n_points // 20))  # entre 5 y 50 flechas
+        step = max(1, n_points // n_arrows)
+
+        # Dibujar flechas a lo largo de la trayectoria
+        for j in range(0, n_points - 1, step):
+            dx = x_vals[j+1] - x_vals[j]
+            dy = y_vals[j+1] - y_vals[j]
+            plt.arrow(
+                x_vals[j], y_vals[j], dx, dy,
+                shape='full', lw=0, color=color,
+                length_includes_head=True, head_width=0.25, alpha=0.75
+            )
         #####
 
     else:
